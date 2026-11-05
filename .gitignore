@@ -1,0 +1,31 @@
+# Data (download from the City of Chicago data portal)
+data/
+*.csv
+
+# Tracking stores, models, build outputs
+mlflow.db
+mlruns/
+mlartifacts/
+results/models/
+dist/
+*.pkl
+*.joblib
+
+# Logs
+*.log
+
+# Environments and caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.Rhistory
+.RData
+
+# Course materials
+assignment.md
+
+# Secrets and OS files
+.env
+.DS_Store
