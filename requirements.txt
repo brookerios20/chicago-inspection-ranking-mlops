@@ -1,0 +1,10 @@
+# Python dependencies. Install with: pip install -r requirements.txt
+# Google Colab provides google.colab itself, so it is not listed.
+
+# Data and analysis
+pandas>=2.2
+numpy>=1.26
+matplotlib>=3.8
+
+# Notebook kernel
+ipykernel>=6
