@@ -8,6 +8,8 @@ This project is an MLOps pipeline that helps the City of Chicago decide which re
 
 This README is a placeholder, and the setup instructions, architecture, and results will be added as the project develops.
 
+The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, the evaluation metric, and the planned toolstack.
+
 ## Data
 
 The project uses the City of Chicago [Food Inspections](https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5) dataset from the Chicago Data Portal (dataset ID `4ijn-s7e5`). The analysis uses an export downloaded on 2026-11-02, which holds 317,961 inspections from 2010-01-04 to 2026-10-29. The CSV is about 340 MB, which is over GitHub's file size limit, so it is kept out of the repository.
