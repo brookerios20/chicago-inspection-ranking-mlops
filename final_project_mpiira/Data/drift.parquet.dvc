@@ -1,0 +1,5 @@
+outs:
+- md5: 0d1038317189d531e4c2c3e23f6ba30f
+  size: 34090998
+  hash: md5
+  path: drift.parquet
