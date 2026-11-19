@@ -53,6 +53,14 @@ dvc status
 
 All tests should pass, and `dvc status` should report that the data and pipelines are up to date.
 
+## 5. Run the training pipeline
+
+```bash
+python pipeline.py --time-budget 60 --no-register
+```
+
+This quick run checks that Prefect, FLAML, and MLflow work, without registering a model. The full run, `python pipeline.py`, searches for 300 seconds per feature version and registers the winner if it passes the gate. View the runs with `mlflow ui --backend-store-uri sqlite:///mlflow.db` at http://127.0.0.1:5000. Each person's `mlflow.db` is local, so registered models stay on the machine that trained them.
+
 ## Working with data versions
 
 Each data version is a git tag. Both load through `load_split()`, so the code is the same for either.

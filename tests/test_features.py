@@ -57,7 +57,7 @@ def test_clean_maps_risk_and_missing_facility():
         {"inspection_id": "1", "license_number": "100", "inspection_date": "01/06/2020", "results": "Pass",
          "risk": "All", "facility_type": None},
     ])
-    row = clean(raw).iloc[0]
+    row = clean(raw, scope="all").iloc[0]  # the restaurant scope would drop a missing facility type
     assert row["risk"] == "missing"
     assert row["facility_group"] == "missing"
 

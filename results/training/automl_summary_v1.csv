@@ -1,0 +1,7 @@
+estimator,inner_weekly_precision_at_k,config,feature_version
+xgboost,0.44654088050314467,"{'n_estimators': 572, 'max_leaves': 6, 'min_child_weight': 3.266288898522076, 'learning_rate': 0.028253638358833644, 'subsample': 0.8346989138763461, 'colsample_bylevel': 0.5844139648315754, 'colsample_bytree': 0.9428211899121233, 'reg_alpha': 0.0009765625, 'reg_lambda': 0.056916803245146926, 'FLAML_sample_size': 50982}",v1
+lgbm,0.4444444444444444,"{'n_estimators': 522, 'num_leaves': 11, 'min_child_samples': 30, 'learning_rate': 0.13537564329124285, 'log_max_bin': 7, 'colsample_bytree': 0.5892741928464534, 'reg_alpha': 0.014468903308874737, 'reg_lambda': 113.06653164185686, 'FLAML_sample_size': 50982}",v1
+rf,0.41509433962264153,"{'n_estimators': 26, 'max_features': 0.23409126056535856, 'max_leaves': 6, 'criterion': 'entropy', 'FLAML_sample_size': 50982}",v1
+extra_tree,0.41090146750524115,"{'n_estimators': 6, 'max_features': 0.10691472675933432, 'max_leaves': 55, 'criterion': 'entropy', 'FLAML_sample_size': 50982}",v1
+lrl1,0.41090146750524115,"{'C': 0.06249999999999999, 'FLAML_sample_size': 50982}",v1
+lrl2,0.4046121593291405,"{'C': 1.0, 'FLAML_sample_size': 10000}",v1

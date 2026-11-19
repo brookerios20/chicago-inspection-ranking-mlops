@@ -6,7 +6,7 @@ This project is an MLOps pipeline that helps the City of Chicago decide which re
 
 ---
 
-The repository implements the data ingestion and baseline stage. Pipeline orchestration, experiment tracking, deployment, and monitoring are added in the following stages. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/eda_rios.ipynb) records the analysis behind each data decision below.
+The repository implements data ingestion, baselines, and the automated training pipeline with experiment tracking and a model registry. Deployment and monitoring are added in the following stages. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/eda_rios.ipynb) records the analysis behind each data decision below. [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
 
 ## Goals
 
@@ -24,12 +24,15 @@ The repository implements the data ingestion and baseline stage. Pipeline orches
 | Ingestion from the Chicago Data Portal | requests (Socrata API) |
 | Data versioning and stage caching | DVC, with a Google Drive remote |
 | Baselines and preprocessing | scikit-learn |
+| Orchestration | Prefect |
+| AutoML | FLAML, searching LightGBM, XGBoost, random forest, extra trees, and L1 and L2 logistic regression |
+| Experiment tracking and model registry | MLflow, with a local SQLite store |
 | Tests | pytest |
 | Exploratory analysis | Jupyter, matplotlib |
 
-## Pipeline
+## Data pipeline
 
-`run_data.py` runs six stages in order. Each stage is a plain function in `src/`, so the orchestrated pipeline in the next stage can call the same code. `dvc.yaml` runs the first five as the DVC stage `prepare` and the last as the stage `baselines`, so `dvc repro` reruns only the stages whose inputs changed.
+`run_data.py` runs six stages in order. Each stage is a plain function in `src/`, which the training pipeline also calls. `dvc.yaml` runs the first five as the DVC stage `prepare` and the last as the stage `baselines`, so `dvc repro` reruns only the stages whose inputs changed.
 
 ```
 Chicago Data Portal (4ijn-s7e5): local CSV export or API, cut at 2026-10-29
@@ -53,6 +56,64 @@ split      -> data/processed/{train,valid,test,drift_pre2018}.parquet, split_man
 baselines  -> results/baselines.csv, baselines_slices.csv, baselines.md,
               capacity.json, metrics.json
 ```
+
+## Training pipeline
+
+`pipeline.py` is a Prefect flow that runs the data pipeline, searches for a model with AutoML, tracks every run in MLflow, and registers the winner. Each tool has one job: DVC versions the data, Prefect orders the steps and logs each run, and MLflow records experiments and holds the model registry.
+
+```
+update_data      -> dvc repro: data/processed and the baselines match the code and snapshot
+        |
+        v
+load_inputs      -> train split (divided into inner fit and inner holdout), canvass rows of
+        |           the valid split, k (capacity.json), best baseline (baselines.csv);
+        |           the test split is never loaded
+        v
+search_version   -> per feature version (v1, v2): FLAML search on the inner split, one MLflow
+        |           run per algorithm, then the winner refit on train and scored on valid
+        v
+choose_and_gate  -> feature version with the better inner-holdout score; its valid score must
+        |           beat the best baseline and the current production model by one standard error
+        v
+register_model   -> refit on train + valid, log with input signature, register with a
+        |           semantic version and the alias "production", save reference.parquet
+        v
+write_reports    -> results/training/comparison.md, comparison.csv, precision_by_k.png
+```
+
+### AutoML search
+
+FLAML tries six algorithms, including the baselines' L2 logistic regression, within a time budget (300 seconds per feature version by default) and tunes each one's hyperparameters. Its custom metric is weekly precision@k on canvass inspections, the same measure the baselines and the gate use, so the search selects models by what the city cares about: failures found in a week's visits.
+
+The search never sees the validation window. It fits on training rows before 2023-10-30 and scores each configuration on the canvass rows of the last training year, the inner holdout. The winning configuration is then refit on the whole training window and scored once on the validation window. Choosing the best of many configurations on one set of rows overstates that set's score, so the selection and the gate use different rows, and the validation score the gate reads is an honest estimate.
+
+The model is an sklearn `Pipeline` of the shared preprocessing and the winning estimator, so the registered model takes the raw feature columns and transforms them the same way training did.
+
+### Comparing feature versions
+
+The flow searches feature version v1 (the establishment's own history) and v2 (v1 plus the ZIP code's recent fail rate and complaint count) with the same steps, budget, and outputs. The version with the higher inner-holdout headline becomes the challenger, so the validation window still plays no part in any choice. For the city, the comparison shows whether neighborhood context finds more failures per week than an establishment's own record.
+
+### Promotion gate
+
+A challenger is registered only if its validation headline beats the best baseline by one standard error, and also beats the production model's recorded validation headline by one standard error when a production model exists.
+
+When the challenger fails and a production model already exists, the flow logs the reason and registers nothing. When it fails and no production model exists yet, the flow registers the best logistic regression baseline as version 1.0.0, refit on training plus validation rows like any other model. The deployment stage then has a model to serve, and every later challenger must beat that baseline's recorded score. The registry tag `promotion` records which path produced each version (`challenger` or `bootstrap_baseline`).
+
+### Model registry and semantic versions
+
+MLflow numbers registry versions 1, 2, 3. Each version also carries a `semver` tag that records what changed since the production version:
+
+| Change | Version bump |
+|---|---|
+| Input signature (features added, removed, or retyped) | MAJOR |
+| Data version or winning algorithm, same signature | MINOR |
+| Hyperparameters or code only | PATCH |
+
+The alias `production` points at the newest version that passed the gate. The deployed API loads `models:/inspection-ranker@production` through `export_model.py`.
+
+### Lineage
+
+Every MLflow run is tagged with the git commit, the nearest `data-v*` tag, the DVC hash of `data/processed` from `dvc.lock`, the facility scope, and the snapshot end. A registered model therefore points to the exact code and data that produced it, and `git checkout <commit>` with `dvc checkout` restores both.
 
 ## Data
 
@@ -111,8 +172,8 @@ The splits use fixed dates, so a newer export cannot move them.
 
 | Split | Inspection dates | Use |
 |---|---|---|
-| `train` | 2018-07-01 to 2024-10-29 | model fitting |
-| `valid` | 2024-10-30 to 2025-10-29 | baselines and model selection |
+| `train` | 2018-07-01 to 2024-10-29 | baselines and model fitting; the AutoML search fits on rows before 2023-10-30 and selects on canvass rows from 2023-10-30 (the inner holdout) |
+| `valid` | 2024-10-30 to 2025-10-29 | baseline scores and the promotion gate |
 | `test` | 2025-10-30 to 2026-10-29 | production validation only |
 | `drift_pre2018` | before 2018-07-01 | drift demonstration under the old food code |
 
@@ -188,9 +249,9 @@ Choose one of the following:
 python -m pytest
 ```
 
-All 29 tests should pass.
+All 42 tests should pass.
 
-### Run the pipeline
+### Run the data pipeline
 
 ```bash
 dvc repro
@@ -201,6 +262,35 @@ From the local CSV, the run takes about a minute. `dvc repro` skips stages whose
 ### Check the run
 
 A run on the same snapshot reproduces the numbers in the Results section. The log should report the modeling rows and the split sizes below, with no validation warnings, and `results/baselines.md` should match the committed copy. For an exact comparison, `dvc status` reports no changes when every output matches `dvc.lock`.
+
+### Run the training pipeline
+
+```bash
+python pipeline.py
+```
+
+The flow runs `dvc repro`, searches both feature versions for 300 seconds each, and registers the winner if it passes the gate (or the best baseline on the first run, as described under Promotion gate), so a full run takes about 11 minutes. Prefect starts a temporary local server for the run, so no separate Prefect setup is needed. Options:
+
+- `--time-budget 60` shortens the search, for a quick check
+- `--feature-versions v2` searches one feature version
+- `--no-register` searches and compares without registering
+- `--skip-dvc` uses the data already in `data/processed`
+
+### Inspect runs and the registry
+
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+Open http://127.0.0.1:5000. The experiment `inspection-ranking` holds one parent run per flow run, a child run per feature version, and a run per algorithm with its best configuration and score. Select the algorithm runs and choose Compare to see the AutoML selection side by side. The Models page shows `inspection-ranker` with its versions, `semver` tags, and the `production` alias.
+
+### Export the production model
+
+```bash
+python export_model.py
+```
+
+This copies the production model and a `version.json` summary into `serving/model/` for the deployment stage.
 
 ## Results
 
@@ -252,6 +342,35 @@ The two versions differ only in facility scope: `data-v1` keeps every facility t
 
 The best baseline scores 0.019 higher on restaurants, which is within one standard error, so the scope change shows no detectable difference in baseline quality. `dvc metrics diff data-v1 data-v2` prints the same comparison for every baseline.
 
+### Algorithm comparison
+
+Each algorithm's best configuration, scored on 5,910 canvass inspections in the inner holdout (the last training year), with a 300-second search per feature version:
+
+| Algorithm | v1 | v2 |
+|---|---|---|
+| LightGBM (`lgbm`) | 0.444 | 0.476 |
+| XGBoost (`xgboost`) | 0.447 | 0.465 |
+| Random forest (`rf`) | 0.415 | 0.455 |
+| L1 logistic regression (`lrl1`) | 0.411 | 0.444 |
+| L2 logistic regression (`lrl2`) | 0.405 | 0.444 |
+| Extra trees (`extra_tree`) | 0.411 | 0.442 |
+
+Every algorithm scores higher with v2, so the ZIP code features help across model families. v2's inner score (0.476) beats v1's (0.447), so the v2 LightGBM model became the challenger. MLflow holds one run per algorithm with its configuration, which the MLflow UI compares side by side.
+
+### Registered model
+
+Each feature version's winner, refit on the whole training window and scored once on 6,099 canvass inspections in the validation window:
+
+| Model | Inner holdout | Validation weekly precision@k | Standard error | Lift per 100 | ROC-AUC |
+|---|---|---|---|---|---|
+| Best baseline (`logistic_regression_v2`) | not searched | 0.449 | 0.023 | 22.1 | 0.680 |
+| AutoML v2 (LightGBM) | 0.476 | 0.447 | 0.023 | 21.9 | 0.672 |
+| AutoML v1 (XGBoost) | 0.447 | 0.405 | 0.022 | 17.7 | 0.646 |
+
+The challenger scored 0.029 lower on the validation window than on the inner holdout that selected it, which is the optimism the separate holdout removes. On the validation window it shows no detectable difference from the logistic regression baseline (0.447 against 0.449), so it does not clear the gate at 0.471. With no production model yet, the flow registered the v2 logistic regression baseline, refit on training plus validation rows, as `inspection-ranker` version 1 (`1.0.0`) with the `production` alias. A later challenger has to beat 0.449 by one standard error to replace it.
+
+For the city, the result means a simple logistic regression on inspection history and ZIP code context finds about 22 more failures per 100 routine visits than random selection, and a broad AutoML search found nothing measurably better on this data. [results/training/comparison.md](results/training/comparison.md) holds the comparison, and [results/training/precision_by_k.png](results/training/precision_by_k.png) plots weekly precision across values of k.
+
 ## Outputs
 
 | Path | Contents |
@@ -268,6 +387,14 @@ The best baseline scores 0.019 higher on restaurants, which is within one standa
 | `results/baselines.md` | summary table of the baselines |
 | `results/capacity.json` | median inspections per week in the training window and the k they imply |
 | `results/metrics.json` | headline metric per baseline, read by `dvc metrics diff` |
+| `results/training/automl_summary_<version>.csv` | best inner-holdout headline and configuration of each algorithm, per feature version |
+| `results/training/slices_<version>.csv` | precision@10% within each slice for the best model of each feature version |
+| `results/training/feature_importance_<version>.png` | feature importances or coefficients of the best model of each feature version |
+| `results/training/comparison.md`, `comparison.csv` | AutoML winners against the best baseline, with the gate decision |
+| `results/training/precision_by_k.png` | weekly precision@k across k for each feature version's best model |
+| `results/reference.parquet` | validation canvass rows with features, labels, and the registered model's out-of-sample predictions, the monitoring reference |
+| `mlflow.db`, `mlartifacts/` | MLflow runs, registry, and logged models (not committed) |
+| `serving/model/` | exported production model for the deployment stage (not committed) |
 
 ## Repository layout
 
@@ -279,6 +406,8 @@ The best baseline scores 0.019 higher on restaurants, which is within one standa
 ├── dvc.yaml                 # DVC stages: prepare and baselines
 ├── dvc.lock                 # output hashes for the checked-out data version
 ├── run_data.py              # entry point for the data ingestion and baseline stage
+├── pipeline.py              # Prefect training flow: AutoML, MLflow tracking, registry
+├── export_model.py          # copies the production model into serving/model/
 ├── src/
 │   ├── config.py            # paths, facility scope, split dates, metric settings, feature lists
 │   ├── manifest.py          # content hashes and manifest files
@@ -288,11 +417,16 @@ The best baseline scores 0.019 higher on restaurants, which is within one standa
 │   ├── features.py          # history and ZIP code features, shared preprocessing
 │   ├── split.py             # fixed-date splits, split manifest, guarded loader
 │   ├── metrics.py           # weekly precision@k, capacity k, lift, slice metrics
-│   └── baselines.py         # baseline scoring and result tables
-├── tests/                   # unit tests for features, splits, validation, and metrics
+│   ├── baselines.py         # baseline scoring and result tables
+│   ├── tracking.py          # MLflow setup and lineage tags
+│   ├── train.py             # model assembly, evaluation, refit, figures
+│   ├── automl.py            # FLAML search with the weekly precision@k metric
+│   └── registry.py          # promotion gate, semantic versions, registration
+├── tests/                   # unit tests for features, splits, validation, metrics, AutoML, registry
 ├── docs/
 │   ├── project_proposal.md
-│   └── team-setup.md        # setup checklist for team members
+│   ├── team-setup.md        # setup checklist for team members
+│   └── design-decisions/    # decisions, rationale, and alternatives for each stage
 ├── eda/
 │   └── eda_rios.ipynb
 ├── final_project_mpiira/    # notebook version of the ingestion stage, with restaurant EDA
@@ -303,6 +437,8 @@ The best baseline scores 0.019 higher on restaurants, which is within one standa
     ├── baselines_slices.csv
     ├── capacity.json
     ├── metrics.json
+    ├── reference.parquet
+    ├── training/
     └── validation/
 ```
 
