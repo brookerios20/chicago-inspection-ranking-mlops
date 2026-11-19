@@ -1,14 +1,17 @@
 # Baselines
 
-Scored on 8,556 canvass inspections in the validation window (2024-10-30 to 2025-10-29), with a Fail base rate of 0.223. Rate baselines use category Fail rates from 44,596 canvass inspections in the training window, and the logistic regressions train on all 91,344 training inspections. The headline metric is precision_at_10, and se_at_headline is its standard error.
+Facility scope: restaurant. Scored on 6,099 canvass inspections in the validation window (2024-10-30 to 2025-10-29), with a Fail base rate of 0.228.
 
-| baseline | precision_at_5 | precision_at_10 | precision_at_20 | se_at_headline | lift_per_100 | roc_auc | pr_auc |
-|---|---|---|---|---|---|---|---|
-| logistic_regression_v2 | 0.471 | 0.425 | 0.385 | 0.017 | 20.168 | 0.672 | 0.359 |
-| logistic_regression_v1 | 0.410 | 0.378 | 0.341 | 0.017 | 15.489 | 0.638 | 0.320 |
-| rate:zip | 0.290 | 0.318 | 0.267 | 0.016 | 9.524 | 0.542 | 0.252 |
-| rate:prior_fails_capped | 0.304 | 0.292 | 0.286 | 0.016 | 6.951 | 0.546 | 0.251 |
-| rate:prev_result | 0.258 | 0.281 | 0.295 | 0.015 | 5.782 | 0.542 | 0.242 |
-| rate:risk | 0.225 | 0.244 | 0.230 | 0.015 | 2.156 | 0.504 | 0.224 |
-| rate:facility_group | 0.227 | 0.233 | 0.230 | 0.014 | 0.986 | 0.515 | 0.229 |
-| random | 0.218 | 0.232 | 0.225 | 0.014 | 0.869 | 0.498 | 0.223 |
+The headline, weekly_precision_at_k, ranks each week's canvass inspections and scores the top 9. k is 10% of the median 93 canvass inspections per week in the training window, where the median for all inspection types is 191 per week. se_headline is its standard error, and the precision_at columns rank the whole window at once.
+
+Rate baselines use category Fail rates from 30,444 canvass inspections in the training window, and the logistic regressions train on all 62,070 training inspections.
+
+| baseline | weekly_precision_at_k | se_headline | lift_per_100 | precision_at_5 | precision_at_10 | precision_at_20 | roc_auc | pr_auc |
+|---|---|---|---|---|---|---|---|---|
+| logistic_regression_v2 | 0.449 | 0.023 | 22.090 | 0.480 | 0.450 | 0.402 | 0.680 | 0.373 |
+| logistic_regression_v1 | 0.394 | 0.022 | 16.639 | 0.414 | 0.396 | 0.360 | 0.646 | 0.336 |
+| rate:prior_fails_capped | 0.335 | 0.022 | 10.769 | 0.322 | 0.304 | 0.290 | 0.539 | 0.253 |
+| rate:zip | 0.287 | 0.021 | 5.947 | 0.296 | 0.315 | 0.260 | 0.546 | 0.256 |
+| rate:prev_result | 0.281 | 0.021 | 5.318 | 0.316 | 0.323 | 0.307 | 0.545 | 0.249 |
+| rate:risk | 0.237 | 0.019 | 0.916 | 0.247 | 0.235 | 0.246 | 0.508 | 0.231 |
+| random | 0.197 | 0.018 | -3.068 | 0.197 | 0.199 | 0.219 | 0.486 | 0.221 |

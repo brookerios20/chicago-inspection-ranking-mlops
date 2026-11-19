@@ -1,0 +1,106 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python run_data.py --skip-baselines
+    deps:
+    - path: data/Food_Inspections_20261102.csv
+      hash: md5
+      md5: 020e2f1ab2f7079d635e2400cfb45b2c
+      size: 356232670
+    - path: run_data.py
+      hash: md5
+      md5: ae4a59182e473b0aea07a3a09b74a1af
+      size: 3566
+    - path: src/clean.py
+      hash: md5
+      md5: 0e347fc4f3e860ddaf395100917d650f
+      size: 4508
+    - path: src/config.py
+      hash: md5
+      md5: 100f1c708e08ab2bcb057ad77a7ee2c7
+      size: 5976
+    - path: src/features.py
+      hash: md5
+      md5: 8844d20ef4fb000490081c19b2ae996c
+      size: 5880
+    - path: src/ingest.py
+      hash: md5
+      md5: 73f0f426848d7bcf6f9a2c186dfc74b9
+      size: 5916
+    - path: src/manifest.py
+      hash: md5
+      md5: f1293c72f4ae498dd357694fd5f0fd22
+      size: 1789
+    - path: src/split.py
+      hash: md5
+      md5: 642bae9c2bf09983e55bcef6a9229654
+      size: 4789
+    - path: src/validate.py
+      hash: md5
+      md5: 2a84b3f6bade7e53e74875dd424789fb
+      size: 7010
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: ed42060b1d61c4c70d4758771a558dc8.dir
+      size: 4663920
+      nfiles: 5
+    - path: data/raw
+      hash: md5
+      md5: 791aded96f4d2ea6a441214e0d615c59.dir
+      size: 96291130
+      nfiles: 2
+    - path: results/validation
+      hash: md5
+      md5: 5a541bfeb5ea0b4b978024d1033e3c3d.dir
+      size: 1462
+      nfiles: 2
+  baselines:
+    cmd: python run_data.py --baselines-only
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: ed42060b1d61c4c70d4758771a558dc8.dir
+      size: 4663920
+      nfiles: 5
+    - path: run_data.py
+      hash: md5
+      md5: ae4a59182e473b0aea07a3a09b74a1af
+      size: 3566
+    - path: src/baselines.py
+      hash: md5
+      md5: 4a127ef175021c283d35e922a9b29aed
+      size: 7178
+    - path: src/config.py
+      hash: md5
+      md5: 100f1c708e08ab2bcb057ad77a7ee2c7
+      size: 5976
+    - path: src/features.py
+      hash: md5
+      md5: 8844d20ef4fb000490081c19b2ae996c
+      size: 5880
+    - path: src/metrics.py
+      hash: md5
+      md5: caf93ad7d2e7d27f1a324ad209d014ae
+      size: 6985
+    outs:
+    - path: results/baselines.csv
+      hash: md5
+      md5: 8594d683a8727f0cd497eb3fff82a7ea
+      size: 1565
+    - path: results/baselines.md
+      hash: md5
+      md5: 892df9dae1935727645af37d1c0170c8
+      size: 1430
+    - path: results/baselines_slices.csv
+      hash: md5
+      md5: 0b5a036ba800b67ba75f082283d834c6
+      size: 4399
+    - path: results/capacity.json
+      hash: md5
+      md5: e0da983040c4bfd6c4f5134d9ef44000
+      size: 164
+    - path: results/metrics.json
+      hash: md5
+      md5: 89c8ef1e305b3bc0bda89c4b8de3468e
+      size: 939

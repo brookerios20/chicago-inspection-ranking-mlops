@@ -1,0 +1,8 @@
+{
+  "facility_scope": "restaurant",
+  "weeks": 331,
+  "median_weekly_inspections": 191.0,
+  "median_weekly_canvass": 93.0,
+  "capacity_share": 0.1,
+  "k_week": 9
+}

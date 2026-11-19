@@ -1,0 +1,51 @@
+# DVC pipeline for the data ingestion and baseline stage.
+#
+# `dvc repro` reruns a stage only when one of its dependencies changed, records the hashes of
+# every output in dvc.lock, and stores the data outputs in the DVC cache. Committing dvc.lock
+# and tagging the commit (data-v1, data-v2, ...) makes each data version recoverable with
+# `git checkout <tag>` followed by `dvc checkout`. `dvc push` and `dvc pull` move the cached
+# data to and from the shared remote.
+#
+# Outputs marked `cache: false` are small result files committed to git, so the README can
+# cite them. The large data outputs live only in DVC.
+
+stages:
+  prepare:
+    cmd: python run_data.py --skip-baselines
+    deps:
+      - data/Food_Inspections_20261102.csv
+      - run_data.py
+      - src/config.py
+      - src/manifest.py
+      - src/ingest.py
+      - src/validate.py
+      - src/clean.py
+      - src/features.py
+      - src/split.py
+    outs:
+      - data/raw
+      - data/processed
+      - results/validation:
+          cache: false
+
+  baselines:
+    cmd: python run_data.py --baselines-only
+    deps:
+      - data/processed
+      - run_data.py
+      - src/config.py
+      - src/features.py
+      - src/metrics.py
+      - src/baselines.py
+    outs:
+      - results/baselines.csv:
+          cache: false
+      - results/baselines_slices.csv:
+          cache: false
+      - results/baselines.md:
+          cache: false
+      - results/capacity.json:
+          cache: false
+    metrics:
+      - results/metrics.json:
+          cache: false

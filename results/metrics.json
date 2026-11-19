@@ -1,0 +1,41 @@
+{
+  "facility_scope": "restaurant",
+  "k_week": 9,
+  "baselines": {
+    "logistic_regression_v2": {
+      "weekly_precision_at_k": 0.4486,
+      "lift_per_100": 22.09,
+      "roc_auc": 0.6802
+    },
+    "logistic_regression_v1": {
+      "weekly_precision_at_k": 0.3941,
+      "lift_per_100": 16.64,
+      "roc_auc": 0.6457
+    },
+    "rate:prior_fails_capped": {
+      "weekly_precision_at_k": 0.3354,
+      "lift_per_100": 10.77,
+      "roc_auc": 0.5394
+    },
+    "rate:zip": {
+      "weekly_precision_at_k": 0.2872,
+      "lift_per_100": 5.95,
+      "roc_auc": 0.5465
+    },
+    "rate:prev_result": {
+      "weekly_precision_at_k": 0.2809,
+      "lift_per_100": 5.32,
+      "roc_auc": 0.5446
+    },
+    "rate:risk": {
+      "weekly_precision_at_k": 0.2369,
+      "lift_per_100": 0.92,
+      "roc_auc": 0.5081
+    },
+    "random": {
+      "weekly_precision_at_k": 0.1971,
+      "lift_per_100": -3.07,
+      "roc_auc": 0.4856
+    }
+  }
+}

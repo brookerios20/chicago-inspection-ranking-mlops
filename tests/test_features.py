@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.clean import clean, inspection_group
 from src.features import build_features
@@ -28,6 +29,27 @@ def test_clean_drops_non_outcomes_and_unlinkable_licenses():
         {"inspection_id": "4", "license_number": None, "inspection_date": "01/09/2020", "results": "Fail"},
     ])
     assert clean(raw)["inspection_id"].tolist() == ["1"]
+
+
+def test_restaurant_scope_keeps_only_restaurants():
+    raw = make_raw([
+        {"inspection_id": "1", "license_number": "100", "inspection_date": "01/06/2020", "results": "Pass"},
+        {"inspection_id": "2", "license_number": "200", "inspection_date": "01/06/2020", "results": "Pass",
+         "facility_type": "Grocery Store"},
+        {"inspection_id": "3", "license_number": "300", "inspection_date": "01/06/2020", "results": "Pass",
+         "facility_type": None},
+        {"inspection_id": "4", "license_number": "400", "inspection_date": "01/06/2020", "results": "Pass",
+         "facility_type": " RESTAURANT "},
+    ])
+    assert clean(raw, scope="all")["inspection_id"].tolist() == ["1", "2", "3", "4"]
+    assert clean(raw, scope="restaurant")["inspection_id"].tolist() == ["1", "4"]
+
+
+def test_unknown_scope_is_rejected():
+    raw = make_raw([{"inspection_id": "1", "license_number": "100", "inspection_date": "01/06/2020",
+                     "results": "Pass"}])
+    with pytest.raises(ValueError, match="facility scope"):
+        clean(raw, scope="bakeries")
 
 
 def test_clean_maps_risk_and_missing_facility():

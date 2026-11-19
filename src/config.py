@@ -70,14 +70,29 @@ SPLITS = ("train", "valid", "test", "drift_pre2018")
 # --- Evaluation -------------------------------------------------------------------------------
 
 SEED = int(os.getenv("SEED", "42"))  # SEED
-K_FRACS = (0.05, 0.10, 0.20)  # shares of ranked canvass inspections scored by precision@k
-HEADLINE_K = 0.10
+
+# Headline metric: weekly precision@k. Each week the model ranks that week's canvass
+# inspections and the top k are scored, where k is CAPACITY_SHARE of the median number of
+# canvass inspections per week in the training window. k is computed from the data, so it
+# follows inspector capacity when the scope or the snapshot changes.
+CAPACITY_SHARE = 0.10
+WEEK_FREQ = "W-SUN"  # weeks run Monday to Sunday
+
+# Secondary metrics: precision@k over the whole window at these shares of ranked rows.
+K_FRACS = (0.05, 0.10, 0.20)
+HEADLINE_K = 0.10  # share used for slice metrics, where weekly counts are too small
 
 # Chicago's North and South Sides divide at Roosevelt Road, near this latitude.
 ROOSEVELT_LAT = 41.8675
 SLICE_FACILITIES = ("restaurant", "grocery store", "school")
 
 # --- Cleaning ---------------------------------------------------------------------------------
+
+# Which establishments the model ranks: "all" facility types, or "restaurant" only. Data
+# version 1 uses "all" and version 2 uses "restaurant". Change it here, so DVC sees the
+# change to this file and reruns the data stages.
+FACILITY_SCOPE = "restaurant"
+FACILITY_SCOPES = {"all": None, "restaurant": ("restaurant",)}
 
 MODEL_RESULTS = ("Pass", "Pass w/ Conditions", "Fail")
 ALL_RESULTS = MODEL_RESULTS + ("Out of Business", "No Entry", "Not Ready", "Business Not Located")
