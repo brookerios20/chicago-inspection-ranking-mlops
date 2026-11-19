@@ -1,0 +1,18 @@
+rule,level,passed,detail
+required_columns,error,True,all present
+inspection_id_not_null,error,True,0 null
+inspection_id_unique,error,True,0 duplicated
+inspection_date_is_datetime,error,True,datetime64[us]
+inspection_date_not_null,error,True,0 null
+inspection_date_in_snapshot,error,True,2010-01-04 00:00:00 to 2026-10-29 00:00:00
+results_not_null,error,True,0 null
+results_allowed_values,error,True,ok
+coordinates_numeric,error,True,"float64, float64"
+coordinates_in_chicago,warning,True,0 outside
+missing_share_violations,warning,True,0.282 (limit 0.35)
+missing_share_facility_type,warning,True,0.017 (limit 0.03)
+missing_share_latitude,warning,True,0.003 (limit 0.01)
+missing_share_license_number,warning,True,0.000 (limit 0.01)
+missing_share_risk,warning,True,0.000 (limit 0.01)
+fail_rate_in_range,warning,True,0.224 (range 0.15 to 0.3)
+no_empty_months,warning,True,ok

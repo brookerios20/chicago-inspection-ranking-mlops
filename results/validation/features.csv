@@ -1,0 +1,13 @@
+rule,level,passed,detail
+required_feature_columns,error,True,all present
+numeric_feature_types,error,True,ok
+categorical_not_null,error,True,ok
+allowed_values_inspection_group,warning,True,ok
+allowed_values_risk,warning,True,ok
+allowed_values_prev_result,warning,True,ok
+range_prior_fails,warning,True,0 outside 0 to 200
+range_n_prior,warning,True,0 outside 0 to 400
+range_days_since_prev,warning,True,0 outside 0 to 6500
+range_prev_n_violations,warning,True,0 outside 0 to 60
+range_zip_fail_rate_365d,warning,True,0 outside 0 to 1
+range_zip_complaints_90d,warning,True,0 outside 0 to 2000
