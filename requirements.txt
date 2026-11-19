@@ -12,6 +12,12 @@ requests>=2.31
 
 # Data versioning with a Google Drive remote
 dvc[gdrive]>=3.50
+# PyDrive2, DVC's Google Drive client, needs pyOpenSSL 24.2.1 or earlier. pyOpenSSL 24.2.1 works
+# with cryptography 41 to 43, and older pyOpenSSL releases do not. Without these two pins, pip
+# pairs an older pyOpenSSL with a newer cryptography, and `dvc push` fails with errors such as
+# "module 'lib' has no attribute 'GEN_EMAIL'".
+cryptography>=41.0.5,<44
+pyOpenSSL==24.2.1
 
 # Baselines and preprocessing
 scikit-learn>=1.4

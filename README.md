@@ -145,6 +145,8 @@ The baselines set the bar a trained model must clear. They are scored on canvass
 
 ## How to run
 
+[docs/team-setup.md](docs/team-setup.md) condenses these steps into a short checklist for team members, with fixes for common errors.
+
 ### Prerequisites
 
 You need Python 3.10 or later. Use a fresh virtual environment, because a conda `base` environment can hold NumPy and pandas builds that conflict and stop pandas from importing.
@@ -163,7 +165,7 @@ On Windows, activate the environment with `.venv\Scripts\activate`.
 
 ### Connect to the DVC remote
 
-The DVC remote `gdrive` is a shared Google Drive folder, set in `.dvc/config`. Google requires your own credentials for DVC, which stay in `.dvc/config.local` and are never committed. With a Google Cloud service account that the folder is shared with, point DVC at its key file:
+The DVC remote `gdrive` is a folder in the team's Google Shared Drive, set in `.dvc/config`. Google requires your own credentials for DVC, which stay in `.dvc/config.local` and are never committed. The team uses a Google Cloud service account that is a member of the Shared Drive with the Content manager role. Ask a teammate for its key file, save it outside the repository, and point DVC at it:
 
 ```bash
 dvc remote modify --local gdrive gdrive_use_service_account true
@@ -289,7 +291,8 @@ The best baseline scores 0.019 higher on restaurants, which is within one standa
 │   └── baselines.py         # baseline scoring and result tables
 ├── tests/                   # unit tests for features, splits, validation, and metrics
 ├── docs/
-│   └── project_proposal.md
+│   ├── project_proposal.md
+│   └── team-setup.md        # setup checklist for team members
 ├── eda/
 │   └── eda_rios.ipynb
 ├── final_project_mpiira/    # notebook version of the ingestion stage, with restaurant EDA
