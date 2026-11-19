@@ -69,6 +69,7 @@ def write_splits(features: pd.DataFrame, out_dir: Path = config.PROCESSED_DIR,
         logger.info("%s: %s rows (%s canvass)", name, f"{len(part):,}", f"{entries[name]['canvass_rows']:,}")
 
     manifest = {
+        "facility_scope": config.FACILITY_SCOPE,
         "split_dates": {
             "food_code_change": config.FOOD_CODE_CHANGE.date(),
             "valid_start": config.VALID_START.date(),

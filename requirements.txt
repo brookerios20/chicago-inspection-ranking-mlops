@@ -10,6 +10,9 @@ matplotlib>=3.8
 # Ingestion from the Chicago Data Portal API
 requests>=2.31
 
+# Data versioning with a Google Drive remote
+dvc[gdrive]>=3.50
+
 # Baselines and preprocessing
 scikit-learn>=1.4
 

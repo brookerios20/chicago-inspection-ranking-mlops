@@ -1,5 +1,7 @@
-# Data (download from the City of Chicago data portal)
-data/
+# Data: DVC stores it, and git keeps only the .dvc pointer files.
+data/*
+!data/*.dvc
+!data/.gitignore
 *.csv
 # Result tables are committed so the README can cite them.
 !results/**/*.csv
@@ -29,6 +31,8 @@ __pycache__/
 # Course materials
 assignment.md
 
-# Secrets and OS files
+# Secrets and OS files (DVC keeps remote credentials in .dvc/config.local, which dvc init ignores)
 .env
+*service-account*.json
+client_secret*.json
 .DS_Store

@@ -1,0 +1,8 @@
+{
+  "facility_scope": "all",
+  "weeks": 331,
+  "median_weekly_inspections": 280.0,
+  "median_weekly_canvass": 136.0,
+  "capacity_share": 0.1,
+  "k_week": 14
+}

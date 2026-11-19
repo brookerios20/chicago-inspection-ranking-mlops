@@ -1,0 +1,46 @@
+{
+  "facility_scope": "all",
+  "k_week": 14,
+  "baselines": {
+    "logistic_regression_v2": {
+      "weekly_precision_at_k": 0.4299,
+      "lift_per_100": 20.7,
+      "roc_auc": 0.6725
+    },
+    "logistic_regression_v1": {
+      "weekly_precision_at_k": 0.3935,
+      "lift_per_100": 17.06,
+      "roc_auc": 0.6384
+    },
+    "rate:prev_result": {
+      "weekly_precision_at_k": 0.3032,
+      "lift_per_100": 8.03,
+      "roc_auc": 0.5415
+    },
+    "rate:prior_fails_capped": {
+      "weekly_precision_at_k": 0.3032,
+      "lift_per_100": 8.03,
+      "roc_auc": 0.5462
+    },
+    "rate:zip": {
+      "weekly_precision_at_k": 0.2978,
+      "lift_per_100": 7.5,
+      "roc_auc": 0.5422
+    },
+    "rate:facility_group": {
+      "weekly_precision_at_k": 0.2372,
+      "lift_per_100": 1.43,
+      "roc_auc": 0.5151
+    },
+    "random": {
+      "weekly_precision_at_k": 0.2278,
+      "lift_per_100": 0.49,
+      "roc_auc": 0.4983
+    },
+    "rate:risk": {
+      "weekly_precision_at_k": 0.2116,
+      "lift_per_100": -1.13,
+      "roc_auc": 0.5039
+    }
+  }
+}

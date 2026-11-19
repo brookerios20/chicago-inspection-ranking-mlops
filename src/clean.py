@@ -6,6 +6,7 @@ The rules follow the EDA notebook (`eda/eda_rios.ipynb`):
   produced no inspection outcome.
 - The target `fail` is 1 for Fail. The Fail rate stays stable across the 2018 food code change,
   while Fail or Pass w/ Conditions more than doubles after it.
+- Rows outside `config.FACILITY_SCOPE` are dropped (all facility types, or restaurants only).
 - Rows with a missing or zero license cannot be linked to earlier inspections and are dropped.
 - Inspection types collapse into five groups, and facility types keep the 20 most common
   values. The 20 are counted on rows before the validation window, so later data does not
@@ -50,12 +51,20 @@ def count_violations(text) -> int:
     return len(VIOLATION_CODE.findall(text)) if isinstance(text, str) else 0
 
 
-def clean(raw: pd.DataFrame, category_cutoff: pd.Timestamp = config.VALID_START) -> pd.DataFrame:
-    """Filter to modeling rows and add the target and cleaned categories.
+def clean(raw: pd.DataFrame, category_cutoff: pd.Timestamp = config.VALID_START,
+          scope: str = config.FACILITY_SCOPE) -> pd.DataFrame:
+    """Filter to modeling rows in the facility scope and add the target and cleaned categories.
 
+    `scope` is a key of `config.FACILITY_SCOPES`: "all" keeps every facility type, and
+    "restaurant" keeps rows whose facility type is exactly "restaurant" after lowercasing.
     Rows come back sorted by license, date, and inspection ID, the order history features need.
     """
+    if scope not in config.FACILITY_SCOPES:
+        raise ValueError(f"Unknown facility scope {scope!r}; expected one of {list(config.FACILITY_SCOPES)}.")
     df = raw[raw["results"].isin(config.MODEL_RESULTS)].copy()
+    allowed = config.FACILITY_SCOPES[scope]
+    if allowed is not None:
+        df = df[df["facility_type"].str.lower().str.strip().isin(allowed).fillna(False).astype(bool)].copy()
 
     license_number = df["license_number"].str.strip()
     linkable = license_number.notna() & ~license_number.isin(["0", "0.0"])
