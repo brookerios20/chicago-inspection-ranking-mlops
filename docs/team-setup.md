@@ -59,7 +59,7 @@ All tests should pass, and `dvc status` should report that the data and pipeline
 python pipeline.py --time-budget 60 --no-register
 ```
 
-This quick run checks that Prefect, FLAML, and MLflow work, without registering a model. The full run, `python pipeline.py`, searches for 300 seconds per feature version and registers the winner if it passes the gate. View the runs with `mlflow ui --backend-store-uri sqlite:///mlflow.db` at http://127.0.0.1:5000. Each person's `mlflow.db` is local, so registered models stay on the machine that trained them.
+This quick run checks that Prefect, FLAML, and MLflow work, without registering a model. The full run, `python pipeline.py`, searches for 300 seconds per feature version and registers the winner if it passes the gate. View the runs with `python -m mlflow ui --backend-store-uri sqlite:///mlflow.db` at http://127.0.0.1:5000. Each person's `mlflow.db` is local, so registered models stay on the machine that trained them.
 
 ## Working with data versions
 
@@ -100,6 +100,7 @@ The data is public, so the pipeline can rebuild it without `dvc pull`. Save the 
 |---|---|
 | `module 'lib' has no attribute 'GEN_EMAIL'` or `'X509_V_FLAG_NOTIFY_POLICY'` | `pyOpenSSL` and `cryptography` versions do not match. Run `pip install -r requirements.txt`, then `pip check`. |
 | `numpy.core.multiarray failed to import` | The command ran in conda `base`. Activate `.venv` and rerun it. |
+| `Detected out-of-date database schema` from `mlflow ui` | The shell ran an MLflow outside `.venv` (the traceback shows its path). Run `python -m mlflow ui --backend-store-uri sqlite:///mlflow.db`, and leave `mlflow db upgrade` unused. In zsh, `rehash` clears the cached command path. |
 | `WARNING: failed to collect 'mpiira-data-v1', skipping` | That tag predates the DVC setup at the repository root and has no data to push or pull. The warning is harmless. |
 | A permissions or file-not-found error from Google Drive | The service account is missing from the Shared Drive, or `.dvc/config.local` points to the wrong key path. Check the path with `dvc config --local --list`. |
 | `ERROR: failed to pull data from the cloud` with missing files | The data for that commit was never pushed. Ask whoever made the commit to run `dvc push`. |

@@ -279,10 +279,10 @@ The flow runs `dvc repro`, searches both feature versions for 300 seconds each, 
 ### Inspect runs and the registry
 
 ```bash
-mlflow ui --backend-store-uri sqlite:///mlflow.db
+python -m mlflow ui --backend-store-uri sqlite:///mlflow.db
 ```
 
-Open http://127.0.0.1:5000. The experiment `inspection-ranking` holds one parent run per flow run, a child run per feature version, and a run per algorithm with its best configuration and score. Select the algorithm runs and choose Compare to see the AutoML selection side by side. The Models page shows `inspection-ranker` with its versions, `semver` tags, and the `production` alias.
+`python -m` runs the MLflow installed in `.venv`. A bare `mlflow` command can resolve to another installation, such as one in conda `base`, which cannot read the database this project's MLflow version creates. Open http://127.0.0.1:5000. The experiment `inspection-ranking` holds one parent run per flow run, a child run per feature version, and a run per algorithm with its best configuration and score. Select the algorithm runs and choose Compare to see the AutoML selection side by side. The Models page shows `inspection-ranker` with its versions, `semver` tags, and the `production` alias.
 
 ### Export the production model
 

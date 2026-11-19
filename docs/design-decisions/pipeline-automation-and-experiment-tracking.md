@@ -162,7 +162,7 @@ Every MLflow run is tagged with the git commit, whether the working tree had unc
 
 - A registered model points to the exact code and data that produced it, and `git checkout` with `dvc checkout` restores both.
 - Prefect may run tasks on different threads, and explicit run IDs keep each log entry on the right run.
-- A local store needs no server, and anyone can open it with `mlflow ui`.
+- A local store needs no server, and anyone can open it with `python -m mlflow ui`.
 
 ### Alternatives considered
 
