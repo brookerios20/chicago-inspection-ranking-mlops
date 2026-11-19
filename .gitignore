@@ -1,6 +1,8 @@
 # Data (download from the City of Chicago data portal)
 data/
 *.csv
+# Result tables are committed so the README can cite them.
+!results/**/*.csv
 
 # Tracking stores, models, build outputs
 mlflow.db
@@ -20,6 +22,7 @@ venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.pytest_cache/
 .Rhistory
 .RData
 
