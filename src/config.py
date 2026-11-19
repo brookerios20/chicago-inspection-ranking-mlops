@@ -91,7 +91,7 @@ SLICE_FACILITIES = ("restaurant", "grocery store", "school")
 # Which establishments the model ranks: "all" facility types, or "restaurant" only. Data
 # version 1 uses "all" and version 2 uses "restaurant". Change it here, so DVC sees the
 # change to this file and reruns the data stages.
-FACILITY_SCOPE = "all"
+FACILITY_SCOPE = "restaurant"
 FACILITY_SCOPES = {"all": None, "restaurant": ("restaurant",)}
 
 MODEL_RESULTS = ("Pass", "Pass w/ Conditions", "Fail")

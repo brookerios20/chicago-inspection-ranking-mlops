@@ -84,7 +84,7 @@ To compare the baselines of two versions, run `dvc metrics diff data-v1 data-v2`
 
 The modeling rows are inspections with a result of Pass, Pass w/ Conditions, or Fail. The other results (Out of Business, No Entry, Not Ready, Business Not Located) record visits with no inspection outcome. Rows with a missing or zero license number are dropped, because they cannot be linked to earlier inspections.
 
-`FACILITY_SCOPE` in `src/config.py` sets which establishments are ranked. The value `"restaurant"` keeps rows whose facility type is exactly "restaurant" after lowercasing, which matches the project's focus on restaurant inspections, and `"all"` keeps every facility type. Under the `"all"` scope, the snapshot has 272,197 modeling rows.
+`FACILITY_SCOPE` in `src/config.py` sets which establishments are ranked. The value `"restaurant"` keeps rows whose facility type is exactly "restaurant" after lowercasing, which matches the project's focus on restaurant inspections, and `"all"` keeps every facility type. The snapshot has 185,236 modeling rows under the `"restaurant"` scope and 272,197 under `"all"`.
 
 The target `fail` is 1 when the result is Fail. Its yearly rate stays between 0.196 and 0.259 from 2010 to 2026, while the rate of Fail or Pass w/ Conditions more than doubles after the 2018 food code change, which would give a model several years of drift unrelated to establishment behavior.
 
@@ -202,31 +202,53 @@ A run on the same snapshot reproduces the numbers in the Results section. The lo
 
 ## Results
 
+The results below are for data version `data-v2` (restaurants only), the version the model trains on.
+
 ### Splits
 
 | Split | Inspections | Canvass inspections | Fail rate | Canvass fail rate |
 |---|---|---|---|---|
-| `train` | 91,344 | 44,596 | 0.233 | 0.247 |
-| `valid` | 16,208 | 8,556 | 0.210 | 0.223 |
-| `test` | 13,856 | 6,435 | 0.208 | 0.217 |
-| `drift_pre2018` | 150,789 | 72,805 | 0.222 | 0.214 |
+| `train` | 62,070 | 30,444 | 0.229 | 0.247 |
+| `valid` | 11,541 | 6,099 | 0.211 | 0.228 |
+| `test` | 9,749 | 4,504 | 0.208 | 0.222 |
+| `drift_pre2018` | 101,876 | 50,401 | 0.211 | 0.208 |
+
+### Inspector capacity
+
+In the training window, restaurants received a median of 191 inspections per week, 93 of them canvass inspections. k is 10% of the canvass figure, 9 visits per week, which picks 477 inspections over the 53 weeks of the validation window.
 
 ### Baselines
 
-Scored on 8,556 canvass inspections in the validation window, with a base rate of 0.223. The standard error of precision@10% is between 0.014 and 0.017 for every baseline.
+Scored on 6,099 canvass inspections in the validation window, with a base rate of 0.228. The standard error of weekly precision@k is between 0.018 and 0.023 for every baseline.
 
-| Baseline | Precision@10% | Lift per 100 | ROC-AUC |
+| Baseline | Weekly precision@k | Lift per 100 | ROC-AUC |
 |---|---|---|---|
-| `logistic_regression_v2` | 0.425 | 20.2 | 0.672 |
-| `logistic_regression_v1` | 0.378 | 15.5 | 0.638 |
-| `rate:zip` | 0.318 | 9.5 | 0.542 |
-| `rate:prior_fails_capped` | 0.292 | 7.0 | 0.546 |
-| `rate:prev_result` | 0.281 | 5.8 | 0.542 |
-| `rate:risk` | 0.244 | 2.2 | 0.504 |
-| `rate:facility_group` | 0.233 | 1.0 | 0.515 |
-| `random` | 0.232 | 0.9 | 0.498 |
+| `logistic_regression_v2` | 0.449 | 22.1 | 0.680 |
+| `logistic_regression_v1` | 0.394 | 16.6 | 0.646 |
+| `rate:prior_fails_capped` | 0.335 | 10.8 | 0.539 |
+| `rate:zip` | 0.287 | 5.9 | 0.546 |
+| `rate:prev_result` | 0.281 | 5.3 | 0.545 |
+| `rate:risk` | 0.237 | 0.9 | 0.508 |
+| `random` | 0.197 | -3.1 | 0.486 |
 
-The v2 logistic regression is the strongest baseline. Its precision@10% is 0.047 above v1, about 2.8 standard errors, so the ZIP code features add lift. Risk and facility type show no detectable lift over random ranking, and their ROC-AUC is close to 0.5. The full table, with precision at 5% and 20% and PR-AUC, is in [results/baselines.md](results/baselines.md), and precision@10% by slice is in [results/baselines_slices.csv](results/baselines_slices.csv).
+The v2 logistic regression is the strongest baseline, 0.055 above v1, so the ZIP code features add lift. Risk shows no detectable lift, and random ranking sits within two standard errors of the base rate. Facility type has one value under this scope, so its rate baseline is skipped. The full table, with precision at 5%, 10%, and 20% of the window and PR-AUC, is in [results/baselines.md](results/baselines.md), and precision@10% by slice is in [results/baselines_slices.csv](results/baselines_slices.csv).
+
+### Data versions compared
+
+The two versions differ only in facility scope: `data-v1` keeps every facility type, and `data-v2` keeps restaurants. Both use the same snapshot, split dates, features, and code.
+
+| | `data-v1` (all facility types) | `data-v2` (restaurants) |
+|---|---|---|
+| Modeling rows | 272,197 | 185,236 |
+| Canvass inspections in validation | 8,556 | 6,099 |
+| Median canvass inspections per week (train) | 136 | 93 |
+| k (visits per week) | 14 | 9 |
+| Canvass base rate (validation) | 0.223 | 0.228 |
+| `logistic_regression_v2`, weekly precision@k | 0.430 | 0.449 |
+| `logistic_regression_v1`, weekly precision@k | 0.394 | 0.394 |
+| `random`, weekly precision@k | 0.228 | 0.197 |
+
+The best baseline scores 0.019 higher on restaurants, which is within one standard error, so the scope change shows no detectable difference in baseline quality. `dvc metrics diff data-v1 data-v2` prints the same comparison for every baseline.
 
 ## Outputs
 
