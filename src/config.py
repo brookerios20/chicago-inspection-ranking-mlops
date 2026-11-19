@@ -123,3 +123,30 @@ NUMERIC_FEATURES = {
 # v1 uses the establishment's own history. v2 adds two neighborhood features for its ZIP code.
 FEATURE_COLUMNS = {version: CATEGORICAL_FEATURES + numeric for version, numeric in NUMERIC_FEATURES.items()}
 FEATURE_VERSION = os.getenv("FEATURE_VERSION", "v1")  # FEATURE_VERSION
+
+# --- Training, tracking, and registry (pipeline.py) -------------------------------------------
+
+# MLflow keeps runs and the model registry in a local SQLite file, and artifacts in mlartifacts/.
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}")  # MLFLOW_TRACKING_URI
+MLFLOW_ARTIFACT_DIR = PROJECT_ROOT / "mlartifacts"
+MLFLOW_EXPERIMENT = "inspection-ranking"
+MODEL_NAME = "inspection-ranker"
+PRODUCTION_ALIAS = "production"
+
+# Inner holdout: the last year of the training window. FLAML fits on training rows before this
+# date and selects configurations (and the feature version) by their score on the canvass rows
+# from this date on, so the validation window is used only by the promotion gate.
+INNER_VALID_START = _env_date("INNER_VALID_START", "2023-10-30")  # INNER_VALID_START
+
+# AutoML search. The budget is per feature version, in seconds.
+FLAML_TIME_BUDGET = int(os.getenv("FLAML_TIME_BUDGET", "300"))  # FLAML_TIME_BUDGET
+# lrl2 is the baselines' model family (L2 logistic regression), so the search can tune it too.
+FLAML_ESTIMATORS = ["lgbm", "xgboost", "rf", "extra_tree", "lrl1", "lrl2"]
+
+# A challenger is registered only if its validation headline beats the best baseline, and the
+# current production model when one exists, by this many standard errors.
+GATE_SE_MULTIPLIER = 1.0
+
+TRAINING_RESULTS_DIR = RESULTS_DIR / "training"
+REFERENCE_PARQUET = RESULTS_DIR / "reference.parquet"
+SERVING_MODEL_DIR = PROJECT_ROOT / "serving" / "model"

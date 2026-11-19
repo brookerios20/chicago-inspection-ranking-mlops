@@ -73,7 +73,7 @@ def baseline_scores(train: pd.DataFrame, evaluate: pd.DataFrame, seed: int = con
     return scores
 
 
-def _markdown_table(df: pd.DataFrame) -> str:
+def markdown_table(df: pd.DataFrame) -> str:
     """Render a table as GitHub markdown, with floats to three decimals."""
     def fmt(value):
         return f"{value:.3f}" if isinstance(value, (float, np.floating)) else str(value)
@@ -138,7 +138,7 @@ def run_baselines(train: pd.DataFrame, valid: pd.DataFrame, out_dir: Path = conf
         f"in the training window, and the logistic regressions train on all {len(train):,} training "
         f"inspections.\n\n"
     )
-    (out_dir / "baselines.md").write_text(header + _markdown_table(table[summary_cols]) + "\n")
+    (out_dir / "baselines.md").write_text(header + markdown_table(table[summary_cols]) + "\n")
     logger.info("k_week = %d (median %.0f canvass inspections per week)", k_week, capacity["median_weekly_canvass"])
     logger.info("Best baseline: %s (%s %.3f)", table.loc[0, "baseline"], HEADLINE, table.loc[0, HEADLINE])
     return table, slices

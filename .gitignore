@@ -11,6 +11,8 @@ mlflow.db
 mlruns/
 mlartifacts/
 results/models/
+serving/model/
+catboost_info/
 dist/
 *.pkl
 *.joblib
