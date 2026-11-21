@@ -6,7 +6,7 @@ This project is an MLOps pipeline that helps the City of Chicago decide which re
 
 ---
 
-The repository implements data ingestion, baselines, and the automated training pipeline with experiment tracking and a model registry. Deployment and monitoring are added in the following stages. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/eda_rios.ipynb) records the analysis behind each data decision below. [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
+The repository implements data ingestion, baselines, the automated training pipeline with experiment tracking and a model registry, and a FastAPI service in Docker that serves the production model. Monitoring is added in the following stage. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/eda_rios.ipynb) records the analysis behind each data decision below. [docs/architecture.md](docs/architecture.md) shows how the stages connect and what each one hands to the next, and [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
 
 ## Goals
 
@@ -27,6 +27,9 @@ The repository implements data ingestion, baselines, and the automated training 
 | Orchestration | Prefect |
 | AutoML | FLAML, searching LightGBM, XGBoost, random forest, extra trees, and L1 and L2 logistic regression |
 | Experiment tracking and model registry | MLflow, with a local SQLite store |
+| Model serialization | skops, MLflow's format for scikit-learn models |
+| Serving | FastAPI, uvicorn |
+| Containerization | Docker |
 | Tests | pytest |
 | Exploratory analysis | Jupyter, matplotlib |
 
@@ -115,6 +118,49 @@ The alias `production` points at the newest version that passed the gate. The de
 
 Every MLflow run is tagged with the git commit, the nearest `data-v*` tag, the DVC hash of `data/processed` from `dvc.lock`, the facility scope, and the snapshot end. A registered model therefore points to the exact code and data that produced it, and `git checkout <commit>` with `dvc checkout` restores both.
 
+## Deployment
+
+`export_model.py` copies the production model out of the MLflow registry, and the Docker image packages it with a FastAPI app. The registry lives in a local SQLite file, so the container never connects to it and runs on any machine with Docker.
+
+```
+models:/inspection-ranker@production
+        |
+        v
+export_model.py  -> serving/model/: model.skops, MLmodel, requirements.txt, version.json
+        |
+        v
+docker build     -> image inspection-ranker with serving/app.py and serving/model/
+        |
+        v
+docker run       -> FastAPI on port 8000: GET /health, POST /predict
+```
+
+### Endpoints
+
+| Endpoint | Returns |
+|---|---|
+| `GET /health` | `status` and the contents of `version.json`: registry version, semantic version, feature version, input columns, estimator, data tag, git commit, validation headline, k, and the skops types trusted when loading |
+| `POST /predict` | a Fail probability and a rank for each facility in the request, with the model's semantic version |
+| `GET /docs` | an interactive Swagger page for both endpoints |
+
+### Request and response
+
+A request holds a batch of one or more facilities. Each facility has a client ID, `facility_id`, which the model does not use, and the ten v2 feature columns from the [Features](#features) table, computed with the same rules as `src/features.py`. Fields outside this list are rejected with a 422 error. The categorical values must match the values the model was trained on:
+
+| Column | Values |
+|---|---|
+| `inspection_group` | `canvass`, `complaint`, `license`, `re-inspection`, `other` |
+| `facility_group` | `restaurant` |
+| `risk` | `high`, `medium`, `low`, `missing` |
+| `prev_result` | `Pass`, `Pass w/ Conditions`, `Fail`, `first inspection` |
+
+The preprocessing encodes a category it did not see in training as all zeros, so a misspelled value such as `High` still returns a score. `days_since_prev` and `prev_n_violations` may be null, as they are for a first inspection, and the model fills them with the training medians.
+
+The response lists the facilities from highest to lowest Fail probability, with rank 1 for the highest. The ranking is within the batch, so a batch of one week's canvass inspections returns the order in which the city would visit them, and the top k (reported by `/health`) are that week's visits. Every response carries `model_version`, the semantic version of the model that scored it.
+
+### Image
+
+The Dockerfile installs `serving/requirements.txt` before copying the app, so a code change reuses the cached dependency layer. The app runs as a non-root user, and Docker checks `/health` every 30 seconds. `serving/requirements.txt` pins pandas, NumPy, scikit-learn, SciPy, and skops to the versions in the exported model's `requirements.txt`, so the container loads the model with the library versions that saved it.
 ## Data
 
 The project uses the City of Chicago [Food Inspections](https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5) dataset from the Chicago Data Portal (dataset ID `4ijn-s7e5`). The snapshot used here ends on 2026-10-29 and holds 317,961 inspections from 2010-01-04 onward. The CSV export is about 356 MB, which is over GitHub's file size limit, so DVC stores it and git keeps only its pointer file, `data/Food_Inspections_20261102.csv.dvc`.
@@ -194,7 +240,7 @@ k follows inspector capacity. It is 10% of the median number of canvass inspecti
 - Validation rules check structure: required columns, types, null and duplicate IDs, dates inside the snapshot, and allowed result values. A failure stops the pipeline.
 - Verification rules check plausibility against the EDA: coordinates inside Chicago, missing-value shares, the fail rate, months with no inspections, and feature value ranges. A failure is logged as a warning.
 
-The deployed API and the monitoring stage reuse the feature rules.
+The monitoring stage, added next, reuses the feature rules on the inputs sent to the deployed API.
 
 ## Baselines
 
@@ -291,6 +337,30 @@ python export_model.py
 ```
 
 This copies the production model and a `version.json` summary into `serving/model/` for the deployment stage.
+
+### Build and run the API
+
+Docker Desktop must be running. Build the image from the repository root after exporting the model. The image copies `serving/model/` at build time, so rebuild it after every export.
+
+```bash
+docker build -t inspection-ranker .
+```
+
+```bash
+docker run --rm -p 8000:8000 inspection-ranker
+```
+
+The log ends with `Uvicorn running on http://0.0.0.0:8000`. Open http://localhost:8000/docs to try the endpoints, or send requests from a second terminal:
+
+```bash
+curl http://localhost:8000/health
+```
+
+```bash
+curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"facilities": [{"facility_id": "A", "inspection_group": "canvass", "facility_group": "restaurant", "risk": "high", "prev_result": "Fail", "prior_fails": 3, "n_prior": 8, "days_since_prev": 120, "prev_n_violations": 6, "zip_fail_rate_365d": 0.28, "zip_complaints_90d": 15}, {"facility_id": "B", "inspection_group": "canvass", "facility_group": "restaurant", "risk": "low", "prev_result": "first inspection", "prior_fails": 0, "n_prior": 0, "days_since_prev": null, "prev_n_violations": null, "zip_fail_rate_365d": 0.18, "zip_complaints_90d": 2}]}'
+```
+
+With version 1.0.0, `/health` reports `"semver": "1.0.0"` and `"k_week": "9"`, and `/predict` ranks facility A first with a score of 0.429 and facility B second with 0.249. Press Ctrl+C to stop the container, which `--rm` then removes.
 
 ## Results
 
@@ -408,6 +478,12 @@ For the city, the result means a simple logistic regression on inspection histor
 ├── run_data.py              # entry point for the data ingestion and baseline stage
 ├── pipeline.py              # Prefect training flow: AutoML, MLflow tracking, registry
 ├── export_model.py          # copies the production model into serving/model/
+├── Dockerfile               # serving image: FastAPI app and the exported model
+├── .dockerignore
+├── serving/
+│   ├── app.py               # FastAPI app: /health and /predict
+│   ├── requirements.txt     # serving dependencies, pinned to the model's versions
+│   └── model/               # exported production model (written by export_model.py, not committed)
 ├── src/
 │   ├── config.py            # paths, facility scope, split dates, metric settings, feature lists
 │   ├── manifest.py          # content hashes and manifest files
@@ -424,6 +500,7 @@ For the city, the result means a simple logistic regression on inspection histor
 │   └── registry.py          # promotion gate, semantic versions, registration
 ├── tests/                   # unit tests for features, splits, validation, metrics, AutoML, registry
 ├── docs/
+│   ├── architecture.md      # stages, artifacts, and the interfaces between them
 │   ├── project_proposal.md
 │   ├── team-setup.md        # setup checklist for team members
 │   └── design-decisions/    # decisions, rationale, and alternatives for each stage
