@@ -11,16 +11,20 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 MODEL_DIR = Path(__file__).parent / "model"
-TRUSTED = ["numpy.dtype"]   # your reviewed list
 
 state = {}   # holds loaded objects for the endpoints
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- runs once at startup ---
-    state["model"] = sio.load(MODEL_DIR / "model.skops", trusted=TRUSTED)
     state["version"] = json.loads((MODEL_DIR / "version.json").read_text())
     state["features"] = state["version"]["features"]
+    # skops loads only the object types it is told to trust. The registry records the types each
+    # model needs when it is logged, and export_model.py copies that list into version.json, so
+    # a new production model (for example LightGBM) loads without editing this file.
+    if "skops_trusted_types" not in state["version"]:
+        raise RuntimeError("version.json has no skops_trusted_types. Rerun export_model.py and rebuild the image.")
+    state["model"] = sio.load(MODEL_DIR / "model.skops", trusted=state["version"]["skops_trusted_types"])
     yield
     # --- runs once at shutdown (nothing to clean up here) ---
     state.clear()
@@ -38,7 +42,9 @@ class Facility(BaseModel):
     inspection_group: str                     # e.g. "canvass"
     facility_group: str                       # e.g. "restaurant"
     risk: str                                 # e.g. "high"
-    prev_result: str | None = None            # e.g. "Pass", "Pass w/ Conditions"
+    # Training encodes an establishment with no earlier inspection as "first inspection"
+    # (src/features.py), so an omitted value gets the same category.
+    prev_result: str = "first inspection"     # "Pass", "Pass w/ Conditions", "Fail", or "first inspection"
 
     # numeric
     prior_fails: float
