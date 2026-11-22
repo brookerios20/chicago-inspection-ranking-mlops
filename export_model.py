@@ -3,7 +3,8 @@
 The serving container does not reach the registry, which lives in a local SQLite file. This
 script downloads the version behind `models:/inspection-ranker@production` into
 serving/model/ and writes serving/model/version.json with its registry version, semantic
-version, feature version, input columns, and lineage tags. The API reports these at /health.
+version, feature version, input columns, lineage tags, and the object types skops must trust to
+load it. The API reports these at /health and loads the model with the trusted types.
 
 Usage:
     python export_model.py
@@ -13,6 +14,7 @@ import json
 import shutil
 
 import mlflow
+import yaml
 
 from src import config, registry, tracking
 
@@ -32,6 +34,11 @@ def main() -> None:
     mlflow.artifacts.download_artifacts(
         artifact_uri=f"models:/{config.MODEL_NAME}@{config.PRODUCTION_ALIAS}", dst_path=str(target))
 
+    # The MLmodel file lists the object types that skops must trust to load this model, which the
+    # registry computed when it logged the model. The serving app reads them from version.json.
+    mlmodel = yaml.safe_load((target / "MLmodel").read_text())
+    trusted = mlmodel["flavors"]["sklearn"].get("skops_trusted_types") or []
+
     tags = dict(version.tags)
     info = {
         "model_name": config.MODEL_NAME,
@@ -44,6 +51,7 @@ def main() -> None:
         "git_commit": tags.get("git_commit"),
         "valid_headline": tags.get("valid_headline"),
         "k_week": tags.get("k_week"),
+        "skops_trusted_types": trusted,
     }
     (target / "version.json").write_text(json.dumps(info, indent=2) + "\n")
     print(f"Exported {config.MODEL_NAME} version {version.version} ({info['semver']}) to serving/model/")
