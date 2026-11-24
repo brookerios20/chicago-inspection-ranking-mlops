@@ -6,7 +6,7 @@ This project is an MLOps pipeline that helps the City of Chicago decide which re
 
 ---
 
-The repository implements data ingestion, baselines, the automated training pipeline with experiment tracking and a model registry, and a FastAPI service in Docker that serves the production model. Monitoring is added in the following stage. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/eda_rios.ipynb) records the analysis behind each data decision below. [docs/architecture.md](docs/architecture.md) shows how the stages connect and what each one hands to the next, and [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
+The repository implements data ingestion, baselines, the automated training pipeline with experiment tracking and a model registry, and a FastAPI service in Docker that serves the production model. Monitoring is added in the following stage. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/consolidated_eda.ipynb) records the analysis behind each data decision below. [docs/architecture.md](docs/architecture.md) shows how the stages connect and what each one hands to the next, and [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
 
 ## Goals
 
@@ -505,7 +505,7 @@ For the city, the result means a simple logistic regression on inspection histor
 │   ├── team-setup.md        # setup checklist for team members
 │   └── design-decisions/    # decisions, rationale, and alternatives for each stage
 ├── eda/
-│   └── eda_rios.ipynb
+│   └── consolidated_eda.ipynb
 ├── final_project_mpiira/    # notebook version of the ingestion stage, with restaurant EDA
 ├── data/                    # DVC pointer files; the data itself is in DVC
 └── results/

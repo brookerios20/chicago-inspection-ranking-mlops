@@ -1,6 +1,6 @@
 """Stage 2: turn the raw snapshot into modeling rows with a target and cleaned categories.
 
-The rules follow the EDA notebook (`eda/eda_rios.ipynb`):
+The rules follow the EDA notebook (`eda/consolidated_eda.ipynb`):
 
 - Modeling rows are Pass, Pass w/ Conditions, and Fail. The other results record visits that
   produced no inspection outcome.

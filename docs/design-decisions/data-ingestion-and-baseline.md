@@ -44,7 +44,7 @@ The target `fail` is 1 when an inspection's result is Fail.
 ### Rationale
 
 - The yearly Fail rate stays between 0.196 and 0.259 from 2010 to 2026.
-- The rate of Fail or Pass w/ Conditions more than doubles after the July 2018 food code change and takes until about 2025 to return to its earlier level, which would give a model years of drift unrelated to establishment behavior ([EDA notebook](../../eda/eda_rios.ipynb)).
+- The rate of Fail or Pass w/ Conditions more than doubles after the July 2018 food code change and takes until about 2025 to return to its earlier level, which would give a model years of drift unrelated to establishment behavior ([EDA notebook](../../eda/consolidated_eda.ipynb)).
 
 ### Alternatives considered
 
