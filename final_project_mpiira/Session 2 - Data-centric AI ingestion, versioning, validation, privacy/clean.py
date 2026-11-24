@@ -1,4 +1,9 @@
-"""Session 2: keep real inspection outcomes, build the fail label, tidy key columns."""
+"""Session 2: keep inspections with a real outcome, build the 0/1 fail label and tidy columns.
+
+The cleaning rules live in one function, so the training data and any data scored later are
+cleaned in exactly the same way. Sessions 2 and 3 warn that differences in how training data
+and live data are prepared (training-serving skew) can quietly hurt a model in production.
+"""
 import pandas as pd
 
 import config

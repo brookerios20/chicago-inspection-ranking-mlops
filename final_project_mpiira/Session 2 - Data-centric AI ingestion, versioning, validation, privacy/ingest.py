@@ -1,4 +1,9 @@
-"""Session 2: load the raw Food Inspections CSV and save a typed parquet snapshot."""
+"""Session 2: load the raw Food Inspections CSV and save it as a typed parquet file.
+
+Ingestion is the first step of the pipeline. Reading the CSV once, fixing the column types and
+saving a parquet snapshot means every later step starts from the same data with the same types.
+Parquet files are also much smaller and faster to load than CSV files.
+"""
 import pandas as pd
 
 def load_raw(csv_path):

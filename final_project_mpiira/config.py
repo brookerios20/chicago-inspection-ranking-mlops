@@ -1,4 +1,9 @@
-"""Project-wide constants shared by the notebook, the Airflow DAG and the API."""
+"""Project-wide settings shared by the notebook, the Airflow pipeline and the prediction API.
+
+This file is written by section 0 of the notebook. Keeping every path, date and label rule in
+one place avoids the "configuration debt" described in Session 1 (Sculley et al., Hidden
+Technical Debt in Machine Learning Systems): a setting changed here is changed everywhere.
+"""
 from pathlib import Path
 
 import pandas as pd
@@ -30,7 +35,7 @@ SEED = 42
 # Label definition: outcome of an inspection
 FAIL_RESULTS = ["Fail"]
 PASS_RESULTS = ["Pass", "Pass w/ Conditions"]
-FACILITY_TYPES = ["restaurant"]    
+FACILITY_TYPES = ["restaurant"]    # facility types kept in the data
 
 # Key dates
 CODE_CHANGE_DATE = pd.Timestamp("2018-07-01")    # food code overhaul, new violation codes
