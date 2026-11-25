@@ -1,0 +1,24 @@
+# Continuous integration: run the unit tests on every push and pull request.
+#
+# The tests build small example tables themselves, so they need no data. The API tests in
+# tests/test_api.py need an exported model, which is not in the repository, so they are skipped here
+# and run on a machine where serving/model/ exists.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run the tests
+        run: python -m pytest -v

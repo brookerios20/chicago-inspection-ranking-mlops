@@ -295,7 +295,7 @@ Choose one of the following:
 python -m pytest
 ```
 
-All 42 tests should pass.
+All 42 unit tests should pass. The 13 tests in `tests/test_api.py` (request schema, invariance and directional behaviour, and a golden-dataset regression check against `tests/data/golden_predictions.json`) run the API in-process and need an exported model in `serving/model/`; without one they are skipped. GitHub Actions runs the whole suite on every push and pull request (`.github/workflows/tests.yml`), where the API tests are skipped. After a deliberate change to the production model, re-create the golden dataset from `app/app.ipynb` (Session 7a) and review the new scores before committing them.
 
 ### Run the data pipeline
 
@@ -505,7 +505,9 @@ For the city, the result means a simple logistic regression on inspection histor
 │   ├── train.py             # model assembly, evaluation, refit, figures
 │   ├── automl.py            # FLAML search with the weekly precision@k metric
 │   └── registry.py          # promotion gate, semantic versions, registration
-├── tests/                   # unit tests for features, splits, validation, metrics, AutoML, registry
+├── tests/                   # unit tests for features, splits, validation, metrics, AutoML, registry, and the API
+│   └── data/golden_predictions.json   # golden dataset for the API regression test
+├── .github/workflows/tests.yml        # continuous integration: pytest on every push
 ├── docs/
 │   ├── architecture.md      # stages, artifacts, and the interfaces between them
 │   ├── project_proposal.md
