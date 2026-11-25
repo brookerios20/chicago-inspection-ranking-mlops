@@ -532,6 +532,8 @@ For the city, the result means a simple logistic regression on inspection histor
 │   └── consolidated_eda.ipynb
 ├── app/
 │   └── app.ipynb            # project walkthrough notebook, one section per course session
+├── ppt/
+│   └── final_project.pptx   # final presentation
 ├── Session <n> - <topic>/   # reading copies of each session's files, written by app.ipynb
 ├── data/                    # DVC pointer files; the data itself is in DVC
 └── results/
