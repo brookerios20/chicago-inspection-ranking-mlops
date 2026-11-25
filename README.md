@@ -6,7 +6,7 @@ This project is an MLOps pipeline that helps the City of Chicago decide which re
 
 ---
 
-The repository implements data ingestion, baselines, the automated training pipeline with experiment tracking and a model registry, a FastAPI service in Docker that serves the production model, and drift monitoring of the deployed API with Evidently. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/consolidated_eda.ipynb) records the analysis behind each data decision below. [docs/architecture.md](docs/architecture.md) shows how the stages connect and what each one hands to the next, and [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
+The repository implements data ingestion, baselines, the automated training pipeline with experiment tracking and a model registry, a FastAPI service in Docker that serves the production model, and monitoring of the deployed API for drift, with fairness and audit checks (see [Production monitoring, drift simulation and governance](#production-monitoring-drift-simulation-and-governance)). The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/consolidated_eda.ipynb) records the analysis behind each data decision below. [docs/architecture.md](docs/architecture.md) shows how the stages connect and what each one hands to the next, and [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
 
 ## Goals
 
@@ -162,6 +162,63 @@ The response lists the facilities from highest to lowest Fail probability, with 
 ### Image
 
 The Dockerfile installs `serving/requirements.txt` before copying the app, so a code change reuses the cached dependency layer. The app runs as a non-root user, and Docker checks `/health` every 30 seconds. `serving/requirements.txt` pins pandas, NumPy, scikit-learn, SciPy, and skops to the versions in the exported model's `requirements.txt`, so the container loads the model with the library versions that saved it.
+## Production monitoring, drift simulation and governance
+
+This part of the project covers what happens after the model is deployed: explaining and checking the production model, testing the running API, monitoring it for drift, and the governance around it (course Sessions 6 to 9). The code is in `src/monitoring.py`, `src/governance.py`, and `src/audit.py`, with tests in `tests/test_api.py`, `test_monitoring.py`, `test_governance.py`, and `test_audit.py`. The step-by-step run, with every table and figure, is in Sessions 6 to 9 of [app/app.ipynb](app/app.ipynb); slides 9 to 14 of [ppt/final_project.pptx](ppt/final_project.pptx) summarize it, and [Monitor the API](#monitor-the-api) has the commands.
+
+### Explainability and fairness of the production model
+
+SHAP explains the logistic regression's scores, both overall and for each inspection on a week's list, so an inspector can see why a restaurant ranks high. Fairlearn compares the model's weekly picks on the North and South Sides (divided at Roosevelt Road) in the validation year:
+
+| Region | Inspections | Fail rate | Share picked | Precision of picks |
+|---|---|---|---|---|
+| North | 4,337 | 0.242 | 0.070 | 0.455 |
+| South | 1,756 | 0.192 | 0.099 | 0.437 |
+
+The South Side is picked somewhat more often, and the picks are about equally accurate on both sides. The [model card](Session%206%20-%20Explainability%2C%20fairness%2C%20faster%20inference/model_card.md) records the model's intended use, evaluation, results by region, and limits.
+
+### Testing the deployed API
+
+`tests/test_api.py` runs `serving/app.py` with the exported model in-process (13 tests): request schema checks (unknown, missing, or wrongly typed fields are rejected with HTTP 422), invariance tests (a score does not depend on the facility ID or on the rest of the batch), directional tests (more earlier fails, more violations, or a higher ZIP code fail rate raise the score), and a golden-dataset regression test that checks 25 recorded validation scores still come back unchanged. GitHub Actions runs the whole suite on every push ([Run the tests](#run-the-tests)).
+
+### Monitoring design
+
+The monitor sends traffic to the Docker container the way the city would, one batch of canvass inspections per week, and logs every batch, rejected ones included. It reads the log back and checks it in three layers:
+
+| Layer | When | Checks | Alert when |
+|---|---|---|---|
+| Requests | every batch | share of requests the API rejects; `validate.validate_features` range and category rules | any request is rejected, or any rule fails |
+| Drift | each monitoring window | Evidently drift of every input column and of the returned scores, against the reference | more than 20% of the monitored columns drift, or the scores drift |
+| Performance | once inspection results arrive | weekly precision@k of the served scores | precision falls below 0.403 (validation 0.449 minus two standard errors) |
+
+The reference is the validation year's canvass inspections (`results/reference.parquet`), scored by the production model. Some features change from one year to the next even in clean data (the ZIP code fail rate follows recent results), so each column's drift threshold is calibrated on clean data from outside the reference and test years (the last training year): 1.5 times the drift measured there, and never below Evidently's default of 0.1. A monitoring window is a year of weekly batches, because a single week holds about 90 canvass inspections, too few for stable drift scores. Alerts go to `monitoring/alerts.log` and to Python logging, and every run is stored in a self-hosted Evidently workspace whose dashboard plots the drift checks run by run.
+
+### Baseline validation and drift simulation
+
+The clean test year (4,504 canvass inspections, 53 weekly batches) was the baseline. The API's scores matched the same model scored in Python to within 6e-11, so the container adds no training-serving skew; no request was rejected and no column drifted. The performance check fired: weekly precision@k on the test year is 0.365, below the 0.403 limit set from validation before the test year was opened. The model still finds more failures than any simple ordering (174 failing restaurants in the year's 477 visits, against 144 for "most earlier fails first" and 108 for a random order), but it is weaker than validation suggested, and the limit was kept as set.
+
+Six drift scenarios were then sent through the same API:
+
+| Scenario | What changes | What fired |
+|---|---|---|
+| old food code 2017-18 | real drift: the year before the July 2018 food code change | drift (5 of 11 columns); precision still 0.470 |
+| out-of-bounds values | impossible values in 20% of rows | input rules, drift, score drift, performance |
+| swapped columns | `prior_fails` and `n_prior` swapped | drift, score drift, performance (the input rules pass) |
+| renamed field | `prior_fails` sent as `prior_failures` | every request rejected (HTTP 422) |
+| raw risk labels | "Risk 1 (High)" instead of "high" | unknown-category rule (and the performance check, as on clean data) |
+| shuffled outcomes | concept drift: outcomes shuffled within each week | performance only (precision 0.243) |
+
+Each layer catches something the others miss: the schema catches renamed fields, the input rules catch impossible and unknown values, the drift checks catch plausible-looking but wrong inputs and real population change, and only the performance check catches concept drift. The real 2017-18 drift moved the inputs without hurting the ranking, so a drift alert alone does not trigger a retrain; a retrain goes through the training pipeline and its promotion gate. The full table of checks is `results/monitoring/checks.csv`, with the alert matrix and drift-per-column figures beside it.
+
+### Governance and operations
+
+- Fairness gate: `governance.fairness_gate` turns the North and South comparison into a pass/fail rule (selection rate and precision of the picks may differ by at most 10 percentage points). The production model passes on the validation and test years, with gaps of 1 to 3 points, and a deliberately biased ranking fails. It is meant to run next to the promotion gate whenever a model is retrained.
+- Privacy: request logs may hold only the request ID and the model's features, never names, addresses, or license numbers; `monitoring/` is not committed. A check of the logs found that rejected requests are logged as sent, so the fix is to keep only the field names of a rejected request.
+- Audit log: `src/audit.py` writes one JSON record per request batch (request ID, time, status, model version, registry version, data version tag, git commit), with no feature values.
+- Security: the API's schema rejects unknown fields and wrong types, the monitor's input rules catch implausible values, credentials (the DVC service-account key, `.env`, `.dvc/config.local`) are git-ignored, and the container runs as a non-root user.
+- Reproducibility: the [reproducibility checklist](Session%209%20-%20MLOps%20in%20practice/reproducibility_checklist.md) lists how code, data, seeds, models, and environments are pinned.
+- LLMOps: summarizing earlier inspections' violation comments with a language model was considered and left out, because the comments are only known after a visit and summaries shown to inspectors would need their own evaluation.
+
 ## Data
 
 The project uses the City of Chicago [Food Inspections](https://data.cityofchicago.org/Health-Human-Services/Food-Inspections/4ijn-s7e5) dataset from the Chicago Data Portal (dataset ID `4ijn-s7e5`). The snapshot used here ends on 2026-10-29 and holds 317,961 inspections from 2010-01-04 onward. The CSV export is about 356 MB, which is over GitHub's file size limit, so DVC stores it and git keeps only its pointer file, `data/Food_Inspections_20261102.csv.dvc`.
