@@ -296,7 +296,7 @@ Choose one of the following:
 python -m pytest
 ```
 
-All 50 unit tests should pass, including the monitoring tests in `tests/test_monitoring.py`. The 13 tests in `tests/test_api.py` (request schema, invariance and directional behaviour, and a golden-dataset regression check against `tests/data/golden_predictions.json`) run the API in-process and need an exported model in `serving/model/`; without one they are skipped. GitHub Actions runs the whole suite on every push and pull request (`.github/workflows/tests.yml`), where the API tests are skipped. After a deliberate change to the production model, re-create the golden dataset from `app/app.ipynb` (Session 7a) and review the new scores before committing them.
+All 55 unit tests should pass, including the monitoring, governance, and audit tests (`tests/test_monitoring.py`, `test_governance.py`, `test_audit.py`). The 13 tests in `tests/test_api.py` (request schema, invariance and directional behaviour, and a golden-dataset regression check against `tests/data/golden_predictions.json`) run the API in-process and need an exported model in `serving/model/`; without one they are skipped. GitHub Actions runs the whole suite on every push and pull request (`.github/workflows/tests.yml`), where the API tests are skipped. After a deliberate change to the production model, re-create the golden dataset from `app/app.ipynb` (Session 7a) and review the new scores before committing them.
 
 ### Run the data pipeline
 
@@ -475,7 +475,7 @@ For the city, the result means a simple logistic regression on inspection histor
 | `results/reference.parquet` | validation canvass rows with features, labels, and the registered model's out-of-sample predictions, the monitoring reference |
 | `results/monitoring/checks.csv` | every monitoring check for the clean test year and each drift scenario: value, limit, and whether it alerted |
 | `results/monitoring/*.png` | the alert matrix, drift per column, and a screenshot of the Evidently dashboard |
-| `monitoring/` | request log, alert log, Evidently workspace, and HTML reports from Session 7b (not committed) |
+| `monitoring/` | request log, alert log, Evidently workspace, and HTML reports from Session 7b, and the audit log `audit.jsonl` from Session 9 (not committed) |
 | `mlflow.db`, `mlartifacts/` | MLflow runs, registry, and logged models (not committed) |
 | `serving/model/` | exported production model for the deployment stage (not committed) |
 
@@ -517,8 +517,10 @@ For the city, the result means a simple logistic regression on inspection histor
 │   ├── train.py             # model assembly, evaluation, refit, figures
 │   ├── automl.py            # FLAML search with the weekly precision@k metric
 │   ├── registry.py          # promotion gate, semantic versions, registration
-│   └── monitoring.py        # request log, drift reports, alerts, drift scenarios
-├── tests/                   # unit tests for features, splits, validation, metrics, AutoML, registry, the API, and monitoring
+│   ├── monitoring.py        # request log, drift reports, alerts, drift scenarios
+│   ├── governance.py        # fairness gate on the weekly picks, privacy rule for logs
+│   └── audit.py             # structured audit log of API requests
+├── tests/                   # unit tests for features, splits, validation, metrics, AutoML, registry, the API, monitoring, governance, and audit
 │   └── data/golden_predictions.json   # golden dataset for the API regression test
 ├── .github/workflows/tests.yml        # continuous integration: pytest on every push
 ├── docs/
