@@ -1,6 +1,6 @@
 # Architecture
 
-The system ranks Chicago restaurant inspections by predicted probability of failing, so inspectors visit the most likely failures first. It has four stages: a data pipeline versioned with DVC, a training pipeline orchestrated by Prefect and tracked in MLflow, a serving API, and drift monitoring. The data pipeline, the training pipeline, and the serving API are implemented. Monitoring is the next stage, and this document fixes the interfaces it builds on. It describes how the stages connect, where each artifact lives, and what each stage hands to the next. [design-decisions/](design-decisions/) records the reasoning behind each choice.
+The system ranks Chicago restaurant inspections by predicted probability of failing, so inspectors visit the most likely failures first. It has four stages: a data pipeline versioned with DVC, a training pipeline orchestrated by Prefect and tracked in MLflow, a serving API, and drift monitoring. All four stages are implemented. It describes how the stages connect, where each artifact lives, and what each stage hands to the next. [design-decisions/](design-decisions/) records the reasoning behind each choice.
 
 ## Overview
 
@@ -29,7 +29,7 @@ Chicago Data Portal (4ijn-s7e5)
                                         export_model.py -> serving/model/
                                               |
                                               v
-                              Serving API (Docker, FastAPI) -> prediction log
+                              Serving API (Docker, FastAPI) -> request log
                                               |
                                               v
                     Monitoring (Evidently) against results/reference.parquet
@@ -48,7 +48,7 @@ Chicago Data Portal (4ijn-s7e5)
 | Model registry | MLflow | `src/registry.py` | Applies the promotion gate, assigns semantic versions, sets the `production` alias |
 | Model export | Python | `export_model.py` | Copies the production model and its metadata to `serving/model/` |
 | Serving | Docker, FastAPI | `Dockerfile`, `serving/app.py` | Accepts a batch of feature rows and returns Fail probabilities, ranks, and the model's semantic version |
-| Monitoring | Evidently | Monitoring stage (next) | Compares served inputs and predictions with the reference data and raises alerts |
+| Monitoring | Evidently | `src/monitoring.py`, Session 7b of `app/app.ipynb` | Logs every request batch, compares served inputs and scores with the reference data, checks performance once results arrive, and raises alerts |
 
 Settings for every component live in `src/config.py`, with environment variable overrides for paths, dates, the seed, the MLflow tracking URI, and the search budget.
 

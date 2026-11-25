@@ -40,3 +40,6 @@ assignment.md
 *service-account*.json
 client_secret*.json
 .DS_Store
+
+# Monitoring output written by app/app.ipynb (request and alert logs, Evidently workspace, HTML reports)
+/monitoring/

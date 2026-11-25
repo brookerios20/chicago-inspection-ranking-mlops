@@ -1,0 +1,33 @@
+check,value,limit,alert,detail,scenario
+rejected requests (share),0.0,0.0,False,0 of 4504 rejected,clean test year
+out-of-range or unknown values (rules),0.0,0.0,False,none,clean test year
+drifted columns (share),0.0,0.2,False,none,clean test year
+score drift (distance),0.11142561082306064,0.295,False,mean score 0.215 (reference 0.221),clean test year
+weekly precision@k (after results arrive),0.36477987421383645,0.40305536897619443,True,validation 0.449; limit is 2 standard errors below it,clean test year
+rejected requests (share),0.0,0.0,False,0 of 5592 rejected,old food code 2017-18
+out-of-range or unknown values (rules),0.0,0.0,False,none,old food code 2017-18
+drifted columns (share),0.45454545454545453,0.2,True,"prior_fails, n_prior, days_since_prev, prev_n_violations, zip_complaints_90d",old food code 2017-18
+score drift (distance),0.19809826597916855,0.295,False,mean score 0.209 (reference 0.221),old food code 2017-18
+weekly precision@k (after results arrive),0.4700854700854701,0.40305536897619443,False,validation 0.449; limit is 2 standard errors below it,old food code 2017-18
+rejected requests (share),0.0,0.0,False,0 of 4504 rejected,out-of-bounds values
+out-of-range or unknown values (rules),2.0,0.0,True,range_prior_fails: 933 outside 0 to 200; range_zip_fail_rate_365d: 933 outside 0 to 1,out-of-bounds values
+drifted columns (share),0.2727272727272727,0.2,True,"prior_fails, zip_fail_rate_365d, score",out-of-bounds values
+score drift (distance),1.5025499727182852,0.295,True,mean score 0.378 (reference 0.221),out-of-bounds values
+weekly precision@k (after results arrive),0.2222222222222222,0.40305536897619443,True,validation 0.449; limit is 2 standard errors below it,out-of-bounds values
+rejected requests (share),0.0,0.0,False,0 of 4504 rejected,swapped columns
+out-of-range or unknown values (rules),0.0,0.0,False,none,swapped columns
+drifted columns (share),0.2727272727272727,0.2,True,"prior_fails, n_prior, score",swapped columns
+score drift (distance),3.824306643045678,0.295,True,mean score 0.620 (reference 0.221),swapped columns
+weekly precision@k (after results arrive),0.26834381551362685,0.40305536897619443,True,validation 0.449; limit is 2 standard errors below it,swapped columns
+rejected requests (share),1.0,0.0,True,4504 of 4504 rejected,renamed field
+out-of-range or unknown values (rules),0.0,0.0,False,none,renamed field
+rejected requests (share),0.0,0.0,False,0 of 4504 rejected,raw risk labels
+out-of-range or unknown values (rules),1.0,0.0,True,"allowed_values_risk: unknown: ['Risk 1 (High)', 'Risk 2 (Medium)', 'Risk 3 (Low)']",raw risk labels
+drifted columns (share),0.09090909090909091,0.2,False,risk,raw risk labels
+score drift (distance),0.12469838392813767,0.295,False,mean score 0.232 (reference 0.221),raw risk labels
+weekly precision@k (after results arrive),0.36268343815513626,0.40305536897619443,True,validation 0.449; limit is 2 standard errors below it,raw risk labels
+rejected requests (share),0.0,0.0,False,0 of 4504 rejected,shuffled outcomes
+out-of-range or unknown values (rules),0.0,0.0,False,none,shuffled outcomes
+drifted columns (share),0.0,0.2,False,none,shuffled outcomes
+score drift (distance),0.11142561082306064,0.295,False,mean score 0.215 (reference 0.221),shuffled outcomes
+weekly precision@k (after results arrive),0.2431865828092243,0.40305536897619443,True,validation 0.449; limit is 2 standard errors below it,shuffled outcomes

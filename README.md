@@ -6,7 +6,7 @@ This project is an MLOps pipeline that helps the City of Chicago decide which re
 
 ---
 
-The repository implements data ingestion, baselines, the automated training pipeline with experiment tracking and a model registry, and a FastAPI service in Docker that serves the production model. Monitoring is added in the following stage. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/consolidated_eda.ipynb) records the analysis behind each data decision below. [docs/architecture.md](docs/architecture.md) shows how the stages connect and what each one hands to the next, and [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
+The repository implements data ingestion, baselines, the automated training pipeline with experiment tracking and a model registry, a FastAPI service in Docker that serves the production model, and drift monitoring of the deployed API with Evidently. The [project proposal](docs/project_proposal.md) describes the dataset, the prediction problem, and the planned toolstack, and the [EDA notebook](eda/consolidated_eda.ipynb) records the analysis behind each data decision below. [docs/architecture.md](docs/architecture.md) shows how the stages connect and what each one hands to the next, and [docs/design-decisions/](docs/design-decisions/) records each design decision with its rationale and the alternatives considered.
 
 ## Goals
 
@@ -30,6 +30,7 @@ The repository implements data ingestion, baselines, the automated training pipe
 | Model serialization | skops, MLflow's format for scikit-learn models |
 | Serving | FastAPI, uvicorn |
 | Containerization | Docker |
+| Monitoring | Evidently (drift reports, self-hosted workspace and UI) |
 | Tests | pytest |
 | Exploratory analysis | Jupyter, matplotlib |
 
@@ -240,7 +241,7 @@ k follows inspector capacity. It is 10% of the median number of canvass inspecti
 - Validation rules check structure: required columns, types, null and duplicate IDs, dates inside the snapshot, and allowed result values. A failure stops the pipeline.
 - Verification rules check plausibility against the EDA: coordinates inside Chicago, missing-value shares, the fail rate, months with no inspections, and feature value ranges. A failure is logged as a warning.
 
-The monitoring stage, added next, reuses the feature rules on the inputs sent to the deployed API.
+The monitoring stage (`src/monitoring.py`) reuses the feature rules on the requests sent to the deployed API.
 
 ## Baselines
 
@@ -295,7 +296,7 @@ Choose one of the following:
 python -m pytest
 ```
 
-All 42 unit tests should pass. The 13 tests in `tests/test_api.py` (request schema, invariance and directional behaviour, and a golden-dataset regression check against `tests/data/golden_predictions.json`) run the API in-process and need an exported model in `serving/model/`; without one they are skipped. GitHub Actions runs the whole suite on every push and pull request (`.github/workflows/tests.yml`), where the API tests are skipped. After a deliberate change to the production model, re-create the golden dataset from `app/app.ipynb` (Session 7a) and review the new scores before committing them.
+All 50 unit tests should pass, including the monitoring tests in `tests/test_monitoring.py`. The 13 tests in `tests/test_api.py` (request schema, invariance and directional behaviour, and a golden-dataset regression check against `tests/data/golden_predictions.json`) run the API in-process and need an exported model in `serving/model/`; without one they are skipped. GitHub Actions runs the whole suite on every push and pull request (`.github/workflows/tests.yml`), where the API tests are skipped. After a deliberate change to the production model, re-create the golden dataset from `app/app.ipynb` (Session 7a) and review the new scores before committing them.
 
 ### Run the data pipeline
 
@@ -361,6 +362,14 @@ curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -
 ```
 
 With version 1.0.0, `/health` reports `"semver": "1.0.0"` and `"k_week": "9"`, and `/predict` ranks facility A first with a score of 0.429 and facility B second with 0.249. Press Ctrl+C to stop the container, which `--rm` then removes.
+
+### Monitor the API
+
+Session 7b of `app/app.ipynb` runs the monitoring against the container: it builds and starts the image, sends the clean test year and six drift scenarios to `/predict` in weekly batches, and checks each one in three layers (rejected requests and input rules, Evidently drift of the inputs and scores against `results/reference.parquet`, and weekly precision@k once the results are known). The request log, the alert log, the Evidently workspace, and an HTML report per scenario go to `monitoring/` (not committed), and the table of checks and the figures go to `results/monitoring/`. To open the dashboard afterwards, run this from the repository root and open http://localhost:8001:
+
+```bash
+evidently ui --workspace monitoring/workspace --port 8001
+```
 
 ## Results
 
@@ -464,6 +473,9 @@ For the city, the result means a simple logistic regression on inspection histor
 | `results/training/precision_by_k.png` | weekly precision@k across k for each feature version's best model |
 | `results/eda/*.png` | figures saved by the consolidated EDA notebook |
 | `results/reference.parquet` | validation canvass rows with features, labels, and the registered model's out-of-sample predictions, the monitoring reference |
+| `results/monitoring/checks.csv` | every monitoring check for the clean test year and each drift scenario: value, limit, and whether it alerted |
+| `results/monitoring/*.png` | the alert matrix, drift per column, and a screenshot of the Evidently dashboard |
+| `monitoring/` | request log, alert log, Evidently workspace, and HTML reports from Session 7b (not committed) |
 | `mlflow.db`, `mlartifacts/` | MLflow runs, registry, and logged models (not committed) |
 | `serving/model/` | exported production model for the deployment stage (not committed) |
 
@@ -504,8 +516,9 @@ For the city, the result means a simple logistic regression on inspection histor
 │   ├── tracking.py          # MLflow setup and lineage tags
 │   ├── train.py             # model assembly, evaluation, refit, figures
 │   ├── automl.py            # FLAML search with the weekly precision@k metric
-│   └── registry.py          # promotion gate, semantic versions, registration
-├── tests/                   # unit tests for features, splits, validation, metrics, AutoML, registry, and the API
+│   ├── registry.py          # promotion gate, semantic versions, registration
+│   └── monitoring.py        # request log, drift reports, alerts, drift scenarios
+├── tests/                   # unit tests for features, splits, validation, metrics, AutoML, registry, the API, and monitoring
 │   └── data/golden_predictions.json   # golden dataset for the API regression test
 ├── .github/workflows/tests.yml        # continuous integration: pytest on every push
 ├── docs/
@@ -526,6 +539,7 @@ For the city, the result means a simple logistic regression on inspection histor
     ├── capacity.json
     ├── metrics.json
     ├── reference.parquet
+    ├── monitoring/
     ├── training/
     └── validation/
 ```
