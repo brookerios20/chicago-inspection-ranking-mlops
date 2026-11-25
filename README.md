@@ -462,9 +462,16 @@ For the city, the result means a simple logistic regression on inspection histor
 | `results/training/feature_importance_<version>.png` | feature importances or coefficients of the best model of each feature version |
 | `results/training/comparison.md`, `comparison.csv` | AutoML winners against the best baseline, with the gate decision |
 | `results/training/precision_by_k.png` | weekly precision@k across k for each feature version's best model |
+| `results/eda/*.png` | figures saved by the consolidated EDA notebook |
 | `results/reference.parquet` | validation canvass rows with features, labels, and the registered model's out-of-sample predictions, the monitoring reference |
 | `mlflow.db`, `mlartifacts/` | MLflow runs, registry, and logged models (not committed) |
 | `serving/model/` | exported production model for the deployment stage (not committed) |
+
+## Project walkthrough notebook
+
+`app/app.ipynb` walks through the whole project in the order it was built, with one section per course session. Under each session, `%%writefile` cells save reading copies of that session's files into a folder named after the session (for example `Session 2 - Data-centric AI ingestion, versioning, validation, privacy/`), next to a short explanation, and further cells run the team's code and show its outputs. The pipeline itself always runs the originals in `src/`, `run_data.py`, and `pipeline.py`; the session folders are a reading aid and are excluded from DVC in `.dvcignore`, which is also why the copy of `dvc.yaml` is saved as `dvc.yaml.copy`. The notebook runs from `app/` after `dvc pull`.
+
+`eda/consolidated_eda.ipynb` holds the exploratory data analysis: the analysis of the raw export that informed each data decision, followed by checks on the final splits.
 
 ## Repository layout
 
@@ -506,7 +513,9 @@ For the city, the result means a simple logistic regression on inspection histor
 │   └── design-decisions/    # decisions, rationale, and alternatives for each stage
 ├── eda/
 │   └── consolidated_eda.ipynb
-├── final_project_mpiira/    # notebook version of the ingestion stage, with restaurant EDA
+├── app/
+│   └── app.ipynb            # project walkthrough notebook, one section per course session
+├── Session <n> - <topic>/   # reading copies of each session's files, written by app.ipynb
 ├── data/                    # DVC pointer files; the data itself is in DVC
 └── results/
     ├── baselines.csv
