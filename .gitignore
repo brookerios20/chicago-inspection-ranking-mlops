@@ -10,6 +10,8 @@ data/*
 mlflow.db
 mlruns/
 mlartifacts/
+# Scratch folder app/app.ipynb uses when it rebuilds the production model locally
+rebuild/
 results/models/
 serving/model/
 catboost_info/
